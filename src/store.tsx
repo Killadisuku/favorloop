@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { createSeedState, DEMO_PASSWORD, levelFor, SEED_VERSION } from './data'
 import type { AppState, Category, Challenge, FavorRequest, Message, Review, TimeEstimate, User } from './types'
 
-const KEY = 'favorloop.v3'
+const KEY = 'favorloop.v5'
 function load(): AppState {
   try {
     const raw = localStorage.getItem(KEY)
@@ -173,7 +173,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const resetDemo = () => { const fresh = createSeedState(); localStorage.setItem(KEY, JSON.stringify(fresh)); setState(fresh) }
   const updateProfile = (patch: Partial<Pick<User, 'bio' | 'name' | 'area'>>) => { if (!me) return; setState((s) => ({ ...s, users: patchUser(s.users, me.id, (u) => ({ ...u, ...patch })) })) }
   const leaderboard = useMemo(() => [...state.users].sort((a, b) => b.favorsGiven - a.favorsGiven), [state.users])
-  const value: Store = { state, me, userById, favorById, openFavors, myFavors, helpingFavors, login, demoLogin, signup, logout, completeOnboarding, postFavor, offerHelp, acceptOffer, cancelFavor, sendMessage, messagesFor, completeFavor, submitReview, reviewsFor, markActivityRead, blockUser, reportUser, togglePlus, verifyProfile, boostFavor, resetDemo, updateProfile, nearbyCount: 24, leaderboard, challenges: state.challenges }
+  const value: Store = { state, me, userById, favorById, openFavors, myFavors, helpingFavors, login, demoLogin, signup, logout, completeOnboarding, postFavor, offerHelp, acceptOffer, cancelFavor, sendMessage, messagesFor, completeFavor, submitReview, reviewsFor, markActivityRead, blockUser, reportUser, togglePlus, verifyProfile, boostFavor, resetDemo, updateProfile, nearbyCount: Math.max(24, openFavors.length), leaderboard, challenges: state.challenges }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
