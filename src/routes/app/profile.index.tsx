@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Avatar } from "@/components/avatar";
-import { UserButton } from "@/lib/auth/gates";
 import { levelFor } from "@/lib/constants";
 import { getMe } from "@/lib/server/profile";
 import { getProfile } from "@/lib/server/profile";
@@ -116,9 +115,6 @@ function Profile() {
         <Link className="btn btn-ghost" to="/app/settings">
           Settings
         </Link>
-      </div>
-      <div style={{ marginTop: 16 }}>
-        <UserButton />
       </div>
     </div>
   );

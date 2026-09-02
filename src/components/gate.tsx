@@ -1,7 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Navigate, useRouterState } from "@tanstack/react-router";
-import { RedirectToSignIn } from "@/lib/auth/gates";
-import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getMe } from "@/lib/server/profile";
 import type { ProfileMe } from "@/lib/types";
 
@@ -12,19 +10,13 @@ export function SessionGate({
   children: (me: ProfileMe) => ReactNode;
   needOnboarding?: boolean;
 }) {
-  const { user, isPending } = useCurrentUserState();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [me, setMe] = useState<ProfileMe | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    setMe(null);
-    setErr(null);
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (isPending || !user) return;
     let live = true;
+    setErr(null);
     getMe()
       .then((res) => {
         if (!live) return;
@@ -33,21 +25,13 @@ export function SessionGate({
       })
       .catch((e: unknown) => {
         if (!live) return;
-        setErr(e instanceof Error && e.message === "Unauthorized" ? "signin" : "Could not load your profile.");
+        setErr(e instanceof Error ? e.message : "Could not load your profile.");
       });
     return () => {
       live = false;
     };
-  }, [isPending, user?.id, path]);
+  }, [path]);
 
-  if (isPending) {
-    return (
-      <div className="auth-wrap">
-        <div className="skeleton" style={{ width: 280, height: 120 }} />
-      </div>
-    );
-  }
-  if (!user || err === "signin") return <RedirectToSignIn />;
   if (err) {
     return (
       <div className="auth-wrap">

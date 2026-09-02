@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { actorMiddleware as authMiddleware } from "@/lib/server/actor";
 import { getSql } from "@/lib/db";
 import { CATEGORIES, MAX_REWARD, MIN_REWARD, TIMES } from "@/lib/constants";
 import type { PostCard, ProfilePublic } from "@/lib/types";

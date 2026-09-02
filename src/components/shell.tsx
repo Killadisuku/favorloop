@@ -1,5 +1,4 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { UserButton } from "@/lib/auth/gates";
 import type { ProfileMe } from "@/lib/types";
 import { Avatar } from "./avatar";
 import { IconBell, IconChat, IconCompass, IconHome, IconLoop, IconPlus, IconUser, IconWallet } from "./icons";
@@ -54,9 +53,6 @@ function ShellInner({ me }: { me: ProfileMe }) {
               <div className="tiny">{me.available} available</div>
             </span>
           </Link>
-          <div style={{ padding: "8px 12px" }}>
-            <UserButton />
-          </div>
         </div>
       </aside>
       <main className="main">

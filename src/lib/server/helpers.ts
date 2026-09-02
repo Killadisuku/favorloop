@@ -169,9 +169,9 @@ export async function ensureProfile(userId: string): Promise<ProfileRow> {
   try {
     await sql`
       insert into profiles (
-        user_id, name, username, email, photo_url, avatar_hue, credits
+        user_id, name, username, email, photo_url, avatar_hue, credits, onboarding_complete
       ) values (
-        ${userId}, ${name}, ${username}, ${au?.email ?? null}, ${au?.image ?? null}, ${hue}, ${STARTER_CREDITS}
+        ${userId}, ${name}, ${username}, ${au?.email ?? null}, ${au?.image ?? null}, ${hue}, ${STARTER_CREDITS}, ${userId.startsWith("guest_")}
       )
     `;
     await sql`

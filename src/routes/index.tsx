@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { SignedIn, SignedOut } from "@/lib/auth/gates";
 import { IconLoop, IconShield } from "@/components/icons";
 
 export const Route = createFileRoute("/")({ component: Landing });
@@ -17,19 +16,9 @@ function Landing() {
               <div className="brand-name">Por Favor</div>
             </div>
             <div className="row" style={{ flex: "0 0 auto", gap: 8 }}>
-              <SignedIn>
-                <Link className="btn btn-primary" to="/app">
-                  Open app
-                </Link>
-              </SignedIn>
-              <SignedOut>
-                <Link className="btn btn-ghost" to="/login">
-                  Log in
-                </Link>
-                <Link className="btn btn-primary" to="/signup">
-                  Get started
-                </Link>
-              </SignedOut>
+              <Link className="btn btn-primary" to="/app">
+                Open app
+              </Link>
             </div>
           </div>
           <p className="kicker" style={{ marginTop: 48 }}>
@@ -43,8 +32,8 @@ function Landing() {
             <span>Get help</span>
           </div>
           <div className="row" style={{ maxWidth: 420, marginTop: 20 }}>
-            <Link className="btn btn-primary" to="/signup">
-              Get started
+            <Link className="btn btn-primary" to="/app">
+              Open app
             </Link>
             <a className="btn btn-ghost" href="#how">
               See how it works
@@ -92,7 +81,7 @@ function Landing() {
         <h2 className="display" style={{ fontSize: 48 }}>
           Give a little. Get a little.
         </h2>
-        <Link className="btn btn-primary" to="/signup">
+        <Link className="btn btn-primary" to="/app">
           Join Por Favor
         </Link>
       </section>

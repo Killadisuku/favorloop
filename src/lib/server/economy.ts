@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { authMiddleware } from "@/lib/auth/middleware";
+import { actorMiddleware as authMiddleware } from "@/lib/server/actor";
 import { getSql } from "@/lib/db";
 import type { ChallengeRow, HomePayload, NotifRow, TxRow } from "@/lib/types";
 import {
