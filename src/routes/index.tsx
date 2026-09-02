@@ -39,14 +39,14 @@ function Landing() {
           </div>
 
           <p className="kicker" style={{ marginTop: 24 }}>
-            A real-world favor economy
+            Small favors. Real connections.
           </p>
-          <h1 className="display">Your time is currency.</h1>
-          <p className="sub">Help people around you. Earn Favor Credits. Spend them when you need help.</p>
+          <h1 className="display">Small favors. Real connections.</h1>
+          <p className="sub">Ask for help, help someone nearby, and build trust in your community.</p>
           <div className="loop-line">
-            <span>Help someone</span>
-            <span>Earn favors</span>
-            <span>Get help</span>
+            <span>Ask for help</span>
+            <span>Help someone nearby</span>
+            <span>Build trust</span>
           </div>
           <div className="row" style={{ maxWidth: 420, marginTop: 20 }}>
             <Link className="btn btn-primary" to="/app">
@@ -66,11 +66,11 @@ function Landing() {
         </h2>
         <div className="steps">
           {[
-            ["1", "Ask", "Post a small request with a Favor reward."],
-            ["2", "Help", "Someone nearby offers. You accept."],
-            ["3", "Earn", "When you confirm, credits move to the helper."],
-            ["4", "Spend", "Use credits when you need a hand."],
-            ["5", "Trust", "Both of you rate. Reputation grows."],
+            ["1", "Ask", "Post a small request and let someone nearby help."],
+            ["2", "Help", "Offer your time to someone who needs a hand."],
+            ["3", "Connect", "Meet people nearby through meaningful favors."],
+            ["4", "Build trust", "Good experiences build your community reputation."],
+            ["5", "Keep it going", "Give a little. Get a little. Repeat."],
           ].map(([n, t, d]) => (
             <div className="step" key={n}>
               <b>{n}</b>
@@ -88,8 +88,7 @@ function Landing() {
             Trust is earned, never self-awarded.
           </h2>
           <p className="muted">
-            Ratings only happen after a completed favor. Credits move on the server. Profiles show what neighbors
-            actually experienced.
+            Ratings only happen after a completed favor. Profiles show what neighbors actually experienced.
           </p>
         </div>
       </section>
