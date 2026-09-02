@@ -22,8 +22,8 @@ function ShellInner({ me }: { me: ProfileMe }) {
             <IconLoop size={18} />
           </div>
           <div>
-            <div className="brand-name">Por Favor</div>
-            <div className="brand-tag">Your time is currency.</div>
+            <div className="brand-name">Onegai</div>
+            <div className="brand-tag">Small favors. Real connections.</div>
           </div>
         </div>
         <nav>
