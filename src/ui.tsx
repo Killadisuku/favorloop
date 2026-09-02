@@ -5,8 +5,10 @@ import { IconBack } from './icons'
 import type { FavorRequest, User } from './types'
 
 export function Avatar({ user, size = 'md' }: { user: User; size?: 'sm' | 'md' | 'lg' }) {
+  const cls = `avatar ${size === 'lg' ? 'lg' : size === 'sm' ? 'sm' : ''}`
+  if (user.photo) return <img className={cls} src={user.photo} alt={user.name} />
   return (
-    <div className={`avatar ${size === 'lg' ? 'lg' : size === 'sm' ? 'sm' : ''}`} style={{ background: `hsl(${user.avatarHue} 42% 38%)` }} aria-hidden>
+    <div className={cls} style={{ background: `hsl(${user.avatarHue} 42% 38%)` }} aria-hidden>
       {initials(user.name)}
     </div>
   )
@@ -27,7 +29,7 @@ export function FavorCard({ favor, author, cta = 'Help' }: { favor: FavorRequest
         <Avatar user={author} />
         <div className="who">
           <b>{author.name} {author.verified && <span title="Verified">✓</span>}</b>
-          <span>{author.trust}% Trust · {relativeTime(favor.createdAt)}</span>
+          <span>{author.trust}% Trust · {relativeTime(favor.createdAt)} · {author.city}</span>
         </div>
         <span className="chip gold">{favor.reward} Favor{favor.reward === 1 ? '' : 's'}</span>
       </div>
