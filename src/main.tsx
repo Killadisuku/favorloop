@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { HashRouter } from 'react-router-dom'
 import App from './App'
 import './index.css'
+import './start.css'
 import { bootLive } from './liveBoot'
 import { StoreProvider } from './store'
 
