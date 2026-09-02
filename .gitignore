@@ -1,4 +1,14 @@
-node_modules
-dist
-*.local
+node_modules/
+.output/
+.vercel/
+.nitro/
+dist/
+screenshots/
+artifacts/
+*.log
 .DS_Store
+.env
+.env.*
+!.env.example
+.grok/preview.log
+.grok/status

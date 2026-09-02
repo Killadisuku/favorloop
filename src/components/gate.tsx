@@ -1,0 +1,75 @@
+import { useEffect, useState, type ReactNode } from "react";
+import { Navigate, useRouterState } from "@tanstack/react-router";
+import { RedirectToSignIn } from "@/lib/auth/gates";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { getMe } from "@/lib/server/profile";
+import type { ProfileMe } from "@/lib/types";
+
+export function SessionGate({
+  children,
+  needOnboarding = false,
+}: {
+  children: (me: ProfileMe) => ReactNode;
+  needOnboarding?: boolean;
+}) {
+  const { user, isPending } = useCurrentUserState();
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  const [me, setMe] = useState<ProfileMe | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMe(null);
+    setErr(null);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (isPending || !user) return;
+    let live = true;
+    getMe()
+      .then((res) => {
+        if (!live) return;
+        setMe(res.data);
+        setErr(null);
+      })
+      .catch((e: unknown) => {
+        if (!live) return;
+        setErr(e instanceof Error && e.message === "Unauthorized" ? "signin" : "Could not load your profile.");
+      });
+    return () => {
+      live = false;
+    };
+  }, [isPending, user?.id, path]);
+
+  if (isPending) {
+    return (
+      <div className="auth-wrap">
+        <div className="skeleton" style={{ width: 280, height: 120 }} />
+      </div>
+    );
+  }
+  if (!user || err === "signin") return <RedirectToSignIn />;
+  if (err) {
+    return (
+      <div className="auth-wrap">
+        <div className="card auth-card">
+          <h1 className="h2">Couldn’t load Por Favor</h1>
+          <p className="muted">{err}</p>
+        </div>
+      </div>
+    );
+  }
+  if (!me) {
+    return (
+      <div className="auth-wrap">
+        <div className="skeleton" style={{ width: 280, height: 120 }} />
+      </div>
+    );
+  }
+  if (!me.onboardingComplete && path !== "/onboarding") {
+    return <Navigate to="/onboarding" />;
+  }
+  if (needOnboarding && me.onboardingComplete && path === "/onboarding") {
+    return <Navigate to="/app" />;
+  }
+  return <>{children(me)}</>;
+}
