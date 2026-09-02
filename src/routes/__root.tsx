@@ -4,7 +4,9 @@ import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
 
-const APP_NAME = "Por Favor";
+const APP_NAME = "Onegai";
+const APP_TAGLINE = "Small favors. Real connections.";
+const APP_DESCRIPTION = "Ask for help, help someone nearby, and build trust in your community.";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -13,10 +15,7 @@ export const Route = createRootRoute({
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: APP_NAME },
       { name: "theme-color", content: "#0f3d36" },
-      {
-        name: "description",
-        content: "Por Favor — your time is currency. Help people around you. Earn Favor Credits. Spend them when you need help.",
-      },
+      { name: "description", content: `${APP_TAGLINE} ${APP_DESCRIPTION}` },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
