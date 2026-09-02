@@ -16,21 +16,36 @@ import { useStore } from './store'
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { me } = useStore()
-  if (!me) return <Navigate to="/login" replace />
+  if (!me) return <Navigate to="/" replace />
   return <>{children}</>
 }
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Landing />} />
+      <Route path="/" element={<Login />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/welcome" element={<Landing />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/onboarding" element={<Onboarding />} />
-      <Route path="/wallet" element={<RequireAuth><Layout /></RequireAuth>}>
+      <Route
+        path="/wallet"
+        element={
+          <RequireAuth>
+            <Layout />
+          </RequireAuth>
+        }
+      >
         <Route index element={<Wallet />} />
       </Route>
-      <Route path="/app" element={<RequireAuth><Layout /></RequireAuth>}>
+      <Route
+        path="/app"
+        element={
+          <RequireAuth>
+            <Layout />
+          </RequireAuth>
+        }
+      >
         <Route index element={<Home />} />
         <Route path="discover" element={<Discover />} />
         <Route path="post" element={<Post />} />
