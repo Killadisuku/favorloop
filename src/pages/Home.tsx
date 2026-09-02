@@ -13,7 +13,7 @@ export function Home() {
     <div>
       <div className="page-h">
         <div>
-          <p className="kicker">FavorLoop · {me.area || me.city}</p>
+          <p className="kicker">Por Favor · {me.area || me.city}</p>
           <h1 className="h1">
             {greeting()}, {me.name} 👋
           </h1>

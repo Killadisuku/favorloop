@@ -6,6 +6,7 @@ export function Wallet() {
   const { me, state } = useStore()
   if (!me) return null
   const txs = state.transactions.filter((t) => t.userId === me.id)
+
   return (
     <div>
       <Back to="/app" label="Wallet" />
@@ -15,7 +16,7 @@ export function Wallet() {
         <div className="hint">Favor Credits</div>
       </section>
       <p className="tiny" style={{ margin: '12px 0 18px' }}>
-        Favor Credits are not cash. They are community credits used inside FavorLoop.
+        Favor Credits are not cash. They are community credits used inside Por Favor.
       </p>
       <h2 className="h2">History</h2>
       <div className="card">
@@ -27,12 +28,15 @@ export function Wallet() {
               <div className="tiny">{new Date(t.createdAt).toLocaleString()}</div>
             </div>
             <div className={t.amount >= 0 ? 'up' : 'down'}>
-              {t.amount >= 0 ? '+' : ''}{t.amount} Favor
+              {t.amount >= 0 ? '+' : ''}
+              {t.amount} Favor
             </div>
           </div>
         ))}
       </div>
-      <Link className="btn btn-ghost btn-block" style={{ marginTop: 12 }} to="/app/discover">Help someone to earn more</Link>
+      <Link className="btn btn-ghost btn-block" style={{ marginTop: 12 }} to="/app/discover">
+        Help someone to earn more
+      </Link>
     </div>
   )
 }
