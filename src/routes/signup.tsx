@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { GROK_PROVIDERS, authClient, authEnabled, signIn } from "@/lib/auth/client";
+import { signInWithGoogle } from "@/lib/google-oauth";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
 export const Route = createFileRoute("/signup")({ component: Signup });
@@ -85,7 +86,28 @@ function Signup() {
               type="button"
               className="btn btn-ghost"
               disabled={busy}
-              onClick={() => void signIn(p.providerId, { callbackURL: "/onboarding", errorCallbackURL: "/signup" })}
+              onClick={() => {
+                void (async () => {
+                  setErr(null);
+                  setBusy(true);
+                  try {
+                    if (p.providerId === "grok-google") {
+                      await signInWithGoogle({
+                        callbackURL: "/onboarding",
+                        errorCallbackURL: "/signup",
+                      });
+                    } else {
+                      await signIn(p.providerId, {
+                        callbackURL: "/onboarding",
+                        errorCallbackURL: "/signup",
+                      });
+                    }
+                  } catch (e) {
+                    setErr(e instanceof Error ? e.message : "Sign-in failed.");
+                    setBusy(false);
+                  }
+                })();
+              }}
             >
               {p.label}
             </button>

@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { GROK_PROVIDERS, authClient, authEnabled, signIn } from "@/lib/auth/client";
+import { signInWithGoogle } from "@/lib/google-oauth";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { IconLoop } from "@/components/icons";
 import { Eye, EyeOff } from "lucide-react";
@@ -38,7 +39,11 @@ function Login() {
     setErr(null);
     setBusy(true);
     try {
-      await signIn(providerId, { callbackURL: "/app", errorCallbackURL: "/login" });
+      if (providerId === "grok-google") {
+        await signInWithGoogle({ callbackURL: "/app", errorCallbackURL: "/login" });
+      } else {
+        await signIn(providerId, { callbackURL: "/app", errorCallbackURL: "/login" });
+      }
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Sign-in failed.");
       setBusy(false);
