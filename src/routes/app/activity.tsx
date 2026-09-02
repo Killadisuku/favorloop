@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { relativeTime } from "@/lib/format";
-import { listNotifications, markNotificationsRead } from "@/lib/server/economy";
+import { listNotifications, markNotificationsRead } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 
 export const Route = createFileRoute("/app/activity")({ component: Activity });

@@ -2,8 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Avatar } from "@/components/avatar";
 import { levelFor } from "@/lib/constants";
-import { getMe } from "@/lib/server/profile";
-import { getProfile } from "@/lib/server/profile";
+import { getMe } from "@/lib/loop";
+import { getProfile } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 
 export const Route = createFileRoute("/app/profile/")({ component: Profile });

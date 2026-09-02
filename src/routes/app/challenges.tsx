@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Avatar } from "@/components/avatar";
 import { IconTrophy } from "@/components/icons";
 import { LEVELS } from "@/lib/constants";
-import { getChallenges } from "@/lib/server/economy";
+import { getChallenges } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 import { useState } from "react";
 

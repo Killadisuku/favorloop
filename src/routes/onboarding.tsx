@@ -3,7 +3,7 @@ import { useState } from "react";
 import { SessionGate } from "@/components/gate";
 import { INTEREST_OPTS, NEED_OPTS, SKILL_OPTS } from "@/lib/constants";
 import { compressImage } from "@/lib/format";
-import { completeOnboarding } from "@/lib/server/profile";
+import { completeOnboarding } from "@/lib/loop";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/onboarding")({ component: Page });

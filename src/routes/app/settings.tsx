@@ -2,10 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Back } from "@/components/back";
 import { Avatar } from "@/components/avatar";
-import { authClient } from "@/lib/auth/client";
 import { compressImage } from "@/lib/format";
 import { INTEREST_OPTS, NEED_OPTS, SKILL_OPTS } from "@/lib/constants";
-import { getMe, updateProfile } from "@/lib/server/profile";
+import { getMe, updateProfile } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 import { toast } from "sonner";
 
@@ -22,8 +21,6 @@ function Settings() {
   const [needs, setNeeds] = useState<string[]>([]);
   const [interests, setInterests] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
-  const [currentPassword, setCurrent] = useState("");
-  const [newPassword, setNew] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -132,33 +129,6 @@ function Settings() {
         }}
       >
         {busy ? "Saving…" : "Save profile"}
-      </button>
-
-      <h2 className="h2" style={{ margin: "24px 0 8px" }}>
-        Change password
-      </h2>
-      <p className="tiny">Works for email-and-password accounts. Google / X logins don't have a local password.</p>
-      <div className="field">
-        <label>Current password</label>
-        <input className="input" type="password" value={currentPassword} onChange={(e) => setCurrent(e.target.value)} />
-      </div>
-      <div className="field">
-        <label>New password</label>
-        <input className="input" type="password" value={newPassword} onChange={(e) => setNew(e.target.value)} />
-      </div>
-      <button
-        className="btn btn-ghost btn-block"
-        onClick={async () => {
-          const { error } = await authClient.changePassword({ currentPassword, newPassword });
-          if (error) toast.error(error.message ?? "Could not change password.");
-          else {
-            toast.success("Password updated.");
-            setCurrent("");
-            setNew("");
-          }
-        }}
-      >
-        Update password
       </button>
     </div>
   );

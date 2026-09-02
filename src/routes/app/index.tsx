@@ -3,7 +3,7 @@ import { FavorCard } from "@/components/favor-card";
 import { Avatar } from "@/components/avatar";
 import { IconLoop } from "@/components/icons";
 import { greeting, relativeTime } from "@/lib/format";
-import { getHome } from "@/lib/server/economy";
+import { getHome } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 
 export const Route = createFileRoute("/app/")({ component: Home });

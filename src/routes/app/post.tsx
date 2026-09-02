@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { CATEGORIES, TIMES } from "@/lib/constants";
-import { getMe } from "@/lib/server/profile";
-import { createPost } from "@/lib/server/posts";
+import { getMe } from "@/lib/loop";
+import { createPost } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 import { toast } from "sonner";
 

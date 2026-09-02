@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Back } from "@/components/back";
 import { relativeTime } from "@/lib/format";
-import { getWallet } from "@/lib/server/economy";
+import { getWallet } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 
 export const Route = createFileRoute("/app/wallet")({ component: Wallet });

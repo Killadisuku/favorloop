@@ -2,8 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Avatar } from "@/components/avatar";
 import { FavorCard } from "@/components/favor-card";
-import { listPeople } from "@/lib/server/profile";
-import { listDiscover } from "@/lib/server/posts";
+import { listPeople } from "@/lib/loop";
+import { listDiscover } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 
 export const Route = createFileRoute("/app/search")({ component: SearchPage });

@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Back } from "@/components/back";
 import { Avatar } from "@/components/avatar";
 import { IconShield } from "@/components/icons";
-import { blockUser, listBlocks } from "@/lib/server/social";
+import { blockUser, listBlocks } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 import { toast } from "sonner";
 

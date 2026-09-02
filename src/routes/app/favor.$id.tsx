@@ -5,10 +5,10 @@ import { Back } from "@/components/back";
 import { IconChat, IconFlag, IconShield } from "@/components/icons";
 import { REVIEW_TAGS } from "@/lib/constants";
 import { formatDistance } from "@/lib/format";
-import { getMe } from "@/lib/server/profile";
-import { boostPost, cancelPost, getPost, toggleBookmark } from "@/lib/server/posts";
-import { confirmComplete, requestComplete } from "@/lib/server/economy";
-import { blockUser, decideOffer, getChatForPost, offerHelp, reportContent, submitReview } from "@/lib/server/social";
+import { getMe } from "@/lib/loop";
+import { boostPost, cancelPost, getPost, toggleBookmark } from "@/lib/loop";
+import { confirmComplete, requestComplete } from "@/lib/loop";
+import { blockUser, decideOffer, getChatForPost, offerHelp, reportContent, submitReview } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 import { toast } from "sonner";
 

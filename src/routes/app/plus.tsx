@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Back } from "@/components/back";
-import { getMe, joinPlusWaitlist } from "@/lib/server/profile";
+import { getMe, joinPlusWaitlist } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -42,7 +42,8 @@ function Plus() {
             setBusy(true);
             const res = await joinPlusWaitlist();
             setBusy(false);
-            toast.message(res.data.message);
+            if (!res.ok) toast.error(res.error);
+            else toast.message(res.data.message);
             void reload();
           }}
         >

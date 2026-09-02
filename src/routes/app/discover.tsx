@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { FavorCard } from "@/components/favor-card";
 import { CATEGORIES } from "@/lib/constants";
-import { listDiscover } from "@/lib/server/posts";
+import { listDiscover } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 
 export const Route = createFileRoute("/app/discover")({ component: Discover });

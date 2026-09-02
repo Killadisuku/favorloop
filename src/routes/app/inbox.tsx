@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Avatar } from "@/components/avatar";
 import { relativeTime } from "@/lib/format";
-import { archiveConversation, listInbox } from "@/lib/server/social";
+import { archiveConversation, listInbox } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 
 export const Route = createFileRoute("/app/inbox")({ component: Inbox });

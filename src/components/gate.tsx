@@ -1,11 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Navigate, useRouterState } from "@tanstack/react-router";
-import { getMe } from "@/lib/server/profile";
+import { getMe } from "@/lib/loop";
 import type { ProfileMe } from "@/lib/types";
 
 export function SessionGate({
   children,
-  needOnboarding = false,
 }: {
   children: (me: ProfileMe) => ReactNode;
   needOnboarding?: boolean;
@@ -20,8 +19,11 @@ export function SessionGate({
     getMe()
       .then((res) => {
         if (!live) return;
-        setMe(res.data);
-        setErr(null);
+        if (!res.ok) setErr(res.error);
+        else {
+          setMe(res.data);
+          setErr(null);
+        }
       })
       .catch((e: unknown) => {
         if (!live) return;
@@ -49,11 +51,6 @@ export function SessionGate({
       </div>
     );
   }
-  if (!me.onboardingComplete && path !== "/onboarding") {
-    return <Navigate to="/onboarding" />;
-  }
-  if (needOnboarding && me.onboardingComplete && path === "/onboarding") {
-    return <Navigate to="/app" />;
-  }
+  if (path === "/onboarding") return <Navigate to="/app" />;
   return <>{children(me)}</>;
 }

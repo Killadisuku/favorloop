@@ -2,9 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Avatar } from "@/components/avatar";
 import { Back } from "@/components/back";
-import { getMessages, sendMessage } from "@/lib/server/social";
-import { confirmComplete, requestComplete } from "@/lib/server/economy";
-import { blockUser, reportContent } from "@/lib/server/social";
+import { getMessages, sendMessage } from "@/lib/loop";
+import { confirmComplete, requestComplete } from "@/lib/loop";
+import { blockUser, reportContent } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 import { toast } from "sonner";
 
