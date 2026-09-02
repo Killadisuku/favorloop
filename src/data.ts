@@ -10,7 +10,7 @@ export const LEVELS = [
   { level: 6, name: 'Local Legend', minGiven: 40 },
 ]
 export const DEMO_PASSWORD = 'loop'
-export const SEED_VERSION = 3
+export const SEED_VERSION = 5
 
 export function levelFor(given: number) {
   let current = LEVELS[0]
@@ -49,14 +49,14 @@ const u = (p: Partial<User> & Pick<User, 'id' | 'name' | 'handle' | 'email' | 'a
 })
 
 const users: User[] = [
-  u({ id: 'u-yasar', name: 'Yasar', handle: 'yasar', email: 'yasar@favorloop.app', avatarHue: 168, area: 'Marina', bio: 'Designer who likes fixing small problems for neighbors.', skills: ['Design','Tech setup','IKEA assembly','Excel'], trust: 96, favorsGiven: 18, favorsReceived: 11, balance: 7, streak: 5, level: 4, verified: true, traits: { helpful: 94, reliable: 91, friendly: 89, problemSolver: 87 }, badges: ['Community Helper','7-Day Helping Streak','Trusted Member'] }),
-  u({ id: 'u-maya', name: 'Maya', handle: 'maya', email: 'maya@favorloop.app', avatarHue: 28, area: 'JBR', trust: 92, favorsGiven: 14, verified: true, plus: true }),
-  u({ id: 'u-omar', name: 'Omar', handle: 'omar', email: 'omar@favorloop.app', avatarHue: 210, area: 'Downtown', trust: 96, favorsGiven: 22, verified: true }),
-  u({ id: 'u-sarah', name: 'Sarah', handle: 'sarah', email: 'sarah@favorloop.app', avatarHue: 330, area: 'Business Bay', trust: 98, favorsGiven: 42, level: 6, verified: true, plus: true }),
-  u({ id: 'u-ahmed', name: 'Ahmed', handle: 'ahmed', email: 'ahmed@favorloop.app', avatarHue: 48, area: 'Al Quoz', trust: 94, favorsGiven: 38, level: 5 }),
-  u({ id: 'u-leila', name: 'Leila', handle: 'leila', email: 'leila@favorloop.app', avatarHue: 280, area: 'Palm Jumeirah', trust: 89, favorsGiven: 9 }),
-  u({ id: 'u-noah', name: 'Noah', handle: 'noah', email: 'noah@favorloop.app', avatarHue: 195, area: 'Al Barsha', trust: 91, favorsGiven: 16, verified: true }),
-  u({ id: 'u-priya', name: 'Priya', handle: 'priya', email: 'priya@favorloop.app', avatarHue: 12, area: 'Mirdif', trust: 88, favorsGiven: 11 }),
+  u({ id: 'u-yasar', name: 'Yasar', handle: 'yasar', email: 'yasar@favorloop.app', avatarHue: 168, photo: 'https://randomuser.me/api/portraits/men/32.jpg', area: 'Marina', bio: 'Designer who likes fixing small problems for neighbors.', skills: ['Design','Tech setup','IKEA assembly','Excel'], trust: 96, favorsGiven: 18, favorsReceived: 11, balance: 7, streak: 5, level: 4, verified: true, traits: { helpful: 94, reliable: 91, friendly: 89, problemSolver: 87 }, badges: ['Community Helper','7-Day Helping Streak','Trusted Member'] }),
+  u({ id: 'u-maya', name: 'Maya', handle: 'maya', email: 'maya@favorloop.app', avatarHue: 28, photo: 'https://randomuser.me/api/portraits/women/44.jpg', area: 'JBR', trust: 92, favorsGiven: 14, verified: true, plus: true }),
+  u({ id: 'u-omar', name: 'Omar', handle: 'omar', email: 'omar@favorloop.app', avatarHue: 210, photo: 'https://randomuser.me/api/portraits/men/75.jpg', area: 'Downtown', trust: 96, favorsGiven: 22, verified: true }),
+  u({ id: 'u-sarah', name: 'Sarah', handle: 'sarah', email: 'sarah@favorloop.app', avatarHue: 330, photo: 'https://randomuser.me/api/portraits/women/68.jpg', area: 'Business Bay', trust: 98, favorsGiven: 42, level: 6, verified: true, plus: true }),
+  u({ id: 'u-ahmed', name: 'Ahmed', handle: 'ahmed', email: 'ahmed@favorloop.app', avatarHue: 48, photo: 'https://randomuser.me/api/portraits/men/22.jpg', area: 'Al Quoz', trust: 94, favorsGiven: 38, level: 5 }),
+  u({ id: 'u-leila', name: 'Leila', handle: 'leila', email: 'leila@favorloop.app', avatarHue: 280, photo: 'https://randomuser.me/api/portraits/women/21.jpg', area: 'Palm Jumeirah', trust: 89, favorsGiven: 9 }),
+  u({ id: 'u-noah', name: 'Noah', handle: 'noah', email: 'noah@favorloop.app', avatarHue: 195, photo: 'https://randomuser.me/api/portraits/men/11.jpg', area: 'Al Barsha', trust: 91, favorsGiven: 16, verified: true }),
+  u({ id: 'u-priya', name: 'Priya', handle: 'priya', email: 'priya@favorloop.app', avatarHue: 12, photo: 'https://randomuser.me/api/portraits/women/36.jpg', area: 'Mirdif', trust: 88, favorsGiven: 11 }),
 ]
 
 const favors: FavorRequest[] = [
