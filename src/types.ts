@@ -5,7 +5,7 @@ export type ActivityKind = 'offer' | 'accepted' | 'completed' | 'rating' | 'mess
 
 export interface User {
   id: string; name: string; handle: string; email: string; city: string; area: string
-  avatarHue: number; bio: string; skills: string[]; needHelpWith: string[]
+  avatarHue: number; photo?: string; bio: string; skills: string[]; needHelpWith: string[]
   trust: number; favorsGiven: number; favorsReceived: number; balance: number
   streak: number; level: number; verified: boolean; plus: boolean
   traits: { helpful: number; reliable: number; friendly: number; problemSolver: number }
