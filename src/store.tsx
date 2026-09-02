@@ -71,7 +71,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const signup = (input: { name: string; email: string; password: string; city: string }) => {
     if (!input.name.trim() || !input.email.trim()) return 'Name and email are required.'
     if (input.password.length < 4) return 'Password should be at least 4 characters.'
-    if (state.users.some((u) => u.email.toLowerCase() === input.email.toLowerCase())) return 'That email is already on FavorLoop.'
+    if (state.users.some((u) => u.email.toLowerCase() === input.email.toLowerCase())) return 'That email is already on Por Favor.'
     const id = uid('u')
     const user: User = { id, name: input.name.trim(), handle: input.name.trim().toLowerCase().replace(/\s+/g, ''), email: input.email.trim(), city: input.city || 'Dubai', area: '', avatarHue: Math.floor(Math.random() * 360), bio: '', skills: [], needHelpWith: [], trust: 70, favorsGiven: 0, favorsReceived: 0, balance: 3, streak: 0, level: 1, verified: false, plus: false, traits: { helpful: 70, reliable: 70, friendly: 70, problemSolver: 70 }, badges: ['New Neighbor'], joinedAt: now().slice(0, 10) }
     setState((s) => ({ ...s, users: [...s.users, user], currentUserId: id, onboardingComplete: false, transactions: [{ id: uid('t'), userId: id, amount: 3, label: 'Promotional starter credits', createdAt: now() }, ...s.transactions] }))
