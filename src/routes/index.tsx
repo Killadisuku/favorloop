@@ -13,7 +13,7 @@ function Landing() {
               <div className="brand-mark">
                 <IconLoop size={18} />
               </div>
-              <div className="brand-name">Por Favor</div>
+              <div className="brand-name">Onegai</div>
             </div>
             <div className="row" style={{ flex: "0 0 auto", gap: 8 }}>
               <Link className="btn btn-primary" to="/app">
@@ -21,7 +21,24 @@ function Landing() {
               </Link>
             </div>
           </div>
-          <p className="kicker" style={{ marginTop: 48 }}>
+
+          <div style={{ marginTop: 28, marginBottom: 28 }}>
+            <img
+              src="/og.jpg"
+              alt="Onegai"
+              style={{
+                display: "block",
+                width: "100%",
+                maxWidth: 760,
+                maxHeight: 420,
+                objectFit: "cover",
+                margin: "0 auto",
+                borderRadius: 24,
+              }}
+            />
+          </div>
+
+          <p className="kicker" style={{ marginTop: 24 }}>
             A real-world favor economy
           </p>
           <h1 className="display">Your time is currency.</h1>
@@ -43,7 +60,7 @@ function Landing() {
       </header>
 
       <section className="section" id="how">
-        <p className="kicker">How Por Favor works</p>
+        <p className="kicker">How Onegai works</p>
         <h2 className="h1" style={{ fontSize: 32, marginBottom: 18 }}>
           Ask. Help. Earn. Spend. Repeat.
         </h2>
@@ -82,7 +99,7 @@ function Landing() {
           Give a little. Get a little.
         </h2>
         <Link className="btn btn-primary" to="/app">
-          Join Por Favor
+          Join Onegai
         </Link>
       </section>
     </div>
