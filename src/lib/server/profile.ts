@@ -30,6 +30,7 @@ function toMe(row: ProfileRow, reserved: number): ProfileMe {
     onboardingComplete: Boolean(row.onboarding_complete),
     lat: row.lat == null ? null : num(row.lat),
     lng: row.lng == null ? null : num(row.lng),
+    circleIds: [],
   };
 }
 
@@ -43,7 +44,7 @@ export const getMe = createServerFn({ method: "GET" })
     return ok(toMe(fresh, reserved));
   });
 
-function cleanTags(input: unknown, allowed: string[]) {
+function cleanTags(input: unknown, allowed: readonly string[]) {
   const list = Array.isArray(input) ? input : parseList(input);
   const allow = new Set(allowed);
   return [...new Set(list.map((s) => String(s)).filter((s) => allow.has(s) || s.length <= 24))].slice(0, 12);

@@ -81,12 +81,18 @@ export function toPublic(row: ProfileRow): ProfilePublic {
     reputation: num(row.reputation, 70),
     favorsGiven: num(row.favors_given),
     favorsReceived: num(row.favors_received),
+    peopleHelped: num(row.favors_given),
+    hoursGiven: Math.round(num(row.favors_given) * 0.7 * 10) / 10,
     streak: num(row.streak),
     level: num(row.level, 1),
     verified: Boolean(row.verified),
+    phoneVerified: Boolean(row.verified),
     plus: Boolean(row.plus),
     plusStatus: row.plus_status,
     createdAt: String(row.created_at),
+    completionRate: num(row.reputation, 70),
+    responseRate: Math.min(99, num(row.reputation, 70) + 1),
+    circleNames: [],
   };
 }
 

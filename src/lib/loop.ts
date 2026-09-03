@@ -1,8 +1,25 @@
-import { APP_NAME, CATEGORIES, LEVELS, MAX_REWARD, MIN_REWARD, PHOTO_MAX_CHARS, STARTER_CREDITS, TIMES } from "@/lib/constants";
+import {
+  APP_NAME,
+  CATEGORIES,
+  HELP_TYPES,
+  hoursFromEstimate,
+  LEGACY_CATEGORY,
+  LEGACY_SKILL,
+  LEVELS,
+  lifecycleLabel,
+  MAX_REWARD,
+  MIN_REWARD,
+  PHOTO_MAX_CHARS,
+  STARTER_CREDITS,
+  TIMES,
+  WHEN_OPTS,
+} from "@/lib/constants";
 import type {
   ChallengeRow,
+  CircleRow,
   ConversationRow,
   HomePayload,
+  Impact,
   MessageRow,
   NotifRow,
   OfferRow,
@@ -22,6 +39,7 @@ type Person = ProfilePublic & {
   onboardingComplete: boolean;
   lat: number | null;
   lng: number | null;
+  circleIds: string[];
 };
 
 type Post = {
@@ -35,12 +53,18 @@ type Post = {
   area: string;
   estimatedTime: string;
   creditReward: number;
+  helpType: string;
+  whenNeeded: string;
+  photoUrl: string | null;
+  circleId: string | null;
   status: string;
   deadline: string | null;
   boostedUntil: string | null;
   helperId: string | null;
   createdAt: string;
 };
+
+type Circle = { id: string; name: string; kind: string; city: string; memberIds: string[] };
 
 type Offer = {
   id: string;
@@ -83,6 +107,7 @@ type DB = {
   challenges: Challenge[];
   progress: Record<string, { progress: number; completed: boolean; rewarded: boolean }>;
   plusWaitlist: boolean;
+  circles: Circle[];
 };
 
 const KEY = "onegai.loop.v1";
@@ -111,7 +136,25 @@ function levelFrom(given: number): number {
   return n;
 }
 
-const NEIGHBORS: Person[] = [
+function enrichPerson(
+  p: Omit<Person, "peopleHelped" | "hoursGiven" | "phoneVerified" | "completionRate" | "responseRate" | "circleNames" | "circleIds"> & {
+    circleIds?: string[];
+  },
+): Person {
+  return {
+    ...p,
+    peopleHelped: p.favorsGiven,
+    hoursGiven: Math.round(p.favorsGiven * 0.7 * 10) / 10,
+    phoneVerified: p.verified,
+    completionRate: p.reputation,
+    responseRate: Math.min(99, p.reputation + 1),
+    circleNames: [],
+    circleIds: p.circleIds ?? [],
+    skills: (p.skills ?? []).map((s) => LEGACY_SKILL[s] ?? s),
+  };
+}
+
+const NEIGHBOR_SEED = [
   {
     userId: "nb_maya",
     name: "Maya Chen",
@@ -276,7 +319,11 @@ const NEIGHBORS: Person[] = [
   },
 ];
 
-const SEED_POSTS: Array<Omit<Post, "createdAt"> & { hoursAgo: number }> = [
+const NEIGHBORS: Person[] = NEIGHBOR_SEED.map(enrichPerson);
+
+const SEED_POSTS: Array<
+  Omit<Post, "createdAt" | "helpType" | "whenNeeded" | "photoUrl" | "circleId"> & { hoursAgo: number }
+> = [
   { id: "p_wifi", userId: "nb_lina", type: "request", title: "Help me set up a mesh Wi-Fi", description: "New apartment, two floors, the office room gets one bar. Need someone who has done this before.", category: "Tech", city: "Dubai", area: "Downtown", estimatedTime: "30–60 min", creditReward: 3, status: "open", deadline: null, boostedUntil: null, helperId: null, hoursAgo: 2 },
   { id: "p_ikea", userId: "nb_maya", type: "request", title: "Build a Billy bookcase", description: "It’s still in the box. Tools are here, patience is not.", category: "Home", city: "Dubai", area: "Marina", estimatedTime: "1–2 hours", creditReward: 4, status: "open", deadline: null, boostedUntil: null, helperId: null, hoursAgo: 5 },
   { id: "p_excel", userId: "nb_omar", type: "request", title: "Excel formula for a small shop ledger", description: "Need SUMIFS and a clean monthly sheet. I can share a sample file.", category: "Learning", city: "Dubai", area: "JLT", estimatedTime: "30–60 min", creditReward: 2, status: "open", deadline: null, boostedUntil: null, helperId: null, hoursAgo: 8 },
@@ -285,10 +332,11 @@ const SEED_POSTS: Array<Omit<Post, "createdAt"> & { hoursAgo: number }> = [
   { id: "p_english", userId: "nb_yusuf", type: "offer", title: "English conversation, 20 minutes", description: "Casual practice. No textbooks. Voice note or in person nearby.", category: "Learning", city: "Dubai", area: "Al Barsha", estimatedTime: "15–30 min", creditReward: 1, status: "open", deadline: null, boostedUntil: null, helperId: null, hoursAgo: 12 },
   { id: "p_move", userId: "nb_noor", type: "offer", title: "I can help move boxes this weekend", description: "Car + two hands. Stairs are fine. Marina / JLT / Downtown.", category: "Home", city: "Dubai", area: "Deira", estimatedTime: "1–2 hours", creditReward: 3, status: "open", deadline: null, boostedUntil: null, helperId: null, hoursAgo: 9 },
   { id: "p_shop", userId: "nb_lina", type: "offer", title: "Carrefour run this evening", description: "Already going. Add your list if it’s small.", category: "Errands", city: "Dubai", area: "Downtown", estimatedTime: "15–30 min", creditReward: 1, status: "open", deadline: null, boostedUntil: null, helperId: null, hoursAgo: 4 },
+  { id: "p_table", userId: "nb_maya", type: "request", title: "Can someone help me move a small table?", description: "Light oak side table, one flight of stairs. Two people would make it easy.", category: "Moving", city: "Dubai", area: "Marina", estimatedTime: "15–30 min", creditReward: 0, status: "open", deadline: null, boostedUntil: null, helperId: null, hoursAgo: 1 },
 ];
 
 function makeSelf(): Person {
-  return {
+  return enrichPerson({
     userId: nid("me"),
     name: "You",
     username: "you",
@@ -297,8 +345,8 @@ function makeSelf(): Person {
     area: "Nearby",
     photoUrl: null,
     avatarHue: 168,
-    skills: ["Errands"],
-    needHelpWith: ["Tech", "Home"],
+    skills: ["Household help", "Shopping", "Moving"],
+    needHelpWith: ["Technology", "Home"],
     interests: ["Neighbors"],
     reputation: 70,
     favorsGiven: 0,
@@ -314,18 +362,29 @@ function makeSelf(): Person {
     onboardingComplete: true,
     lat: 25.2,
     lng: 55.27,
-  };
+  });
 }
 
 function seed(): DB {
   const self = makeSelf();
+  const circles: Circle[] = defaultCircles(self.userId);
+  self.circleIds = ["c_marina", "c_friends"];
   const posts: Post[] = SEED_POSTS.map((p) => ({
+    helpType: p.category === "Transport" ? "paid" : p.category === "Home" ? "kindness" : "favor",
+    whenNeeded: p.id === "p_airport" ? "Tomorrow" : "Flexible",
+    photoUrl: null,
+    circleId: p.userId === "nb_maya" ? "c_marina" : null,
     ...p,
+    category: LEGACY_CATEGORY[p.category] ?? p.category,
     createdAt: new Date(Date.now() - p.hoursAgo * 3600_000).toISOString(),
   }));
+  const people = [self, ...NEIGHBORS].map((p) => {
+    p.circleIds = circles.filter((c) => c.memberIds.includes(p.userId)).map((c) => c.id);
+    return p;
+  });
   return {
     selfId: self.userId,
-    people: [self, ...NEIGHBORS],
+    people,
     posts,
     offers: [],
     convos: [],
@@ -338,7 +397,7 @@ function seed(): DB {
         amount: STARTER_CREDITS,
         type: "starter",
         relatedFavorId: null,
-        label: "Promotional starter credits",
+        label: "Starter community favors",
         status: "completed",
         createdAt: now(),
       },
@@ -348,8 +407,17 @@ function seed(): DB {
         id: nid("n"),
         type: "welcome",
         title: `Welcome to ${APP_NAME}`,
-        body: "You have 3 credits. Help someone, or post a small request.",
+        body: "Ask for a small hand, or help someone nearby.",
         href: "/app/discover",
+        read: false,
+        createdAt: now(),
+      },
+      {
+        id: nid("n"),
+        type: "match",
+        title: "3 requests match your skills",
+        body: "Household help and shopping are needed nearby.",
+        href: "/app/help",
         read: false,
         createdAt: now(),
       },
@@ -364,6 +432,7 @@ function seed(): DB {
     ],
     progress: {},
     plusWaitlist: false,
+    circles,
   };
 }
 
@@ -374,7 +443,7 @@ function load(): DB {
   try {
     const raw = localStorage.getItem(KEY) ?? localStorage.getItem(LEGACY_KEY);
     if (raw) {
-      mem = JSON.parse(raw) as DB;
+      mem = migrate(JSON.parse(raw) as DB);
       save();
       return mem;
     }
@@ -384,6 +453,37 @@ function load(): DB {
   mem = seed();
   save();
   return mem;
+}
+
+function defaultCircles(selfId: string): Circle[] {
+  return [
+    { id: "c_marina", name: "Marina neighbors", kind: "My Neighborhood", city: "Dubai", memberIds: ["nb_maya", selfId] },
+    { id: "c_jlt", name: "JLT building", kind: "My Building", city: "Dubai", memberIds: ["nb_omar"] },
+    { id: "c_downtown", name: "Downtown community", kind: "Community", city: "Dubai", memberIds: ["nb_lina", "nb_sofia"] },
+    { id: "c_friends", name: "Friends & family", kind: "Friends & Family", city: "Dubai", memberIds: [selfId] },
+  ];
+}
+
+function migrate(db: DB): DB {
+  if (!db.circles || db.circles.length === 0) db.circles = defaultCircles(db.selfId);
+  db.people = (db.people ?? []).map((p) => {
+    const skills = (p.skills ?? []).map((s) => LEGACY_SKILL[s] ?? s);
+    const circleIds = p.circleIds ?? db.circles.filter((c) => c.memberIds.includes(p.userId)).map((c) => c.id);
+    return enrichPerson({
+      ...p,
+      skills: skills.length ? skills : ["Household help"],
+      circleIds,
+    });
+  });
+  db.posts = (db.posts ?? []).map((p) => ({
+    ...p,
+    category: LEGACY_CATEGORY[p.category] ?? p.category,
+    helpType: p.helpType ?? (p.creditReward === 0 ? "kindness" : "favor"),
+    whenNeeded: p.whenNeeded ?? "Flexible",
+    photoUrl: p.photoUrl ?? null,
+    circleId: p.circleId ?? null,
+  }));
+  return db;
 }
 
 function save() {
@@ -403,12 +503,53 @@ function person(id: string) {
   return load().people.find((p) => p.userId === id) ?? null;
 }
 function toPublic(p: Person): ProfilePublic {
-  const { email: _e, credits: _c, onboardingComplete: _o, lat: _la, lng: _ln, ...pub } = p;
-  return pub;
+  const db = load();
+  const circleNames = (p.circleIds ?? []).map((id) => db.circles.find((c) => c.id === id)?.name).filter(Boolean) as string[];
+  const asHelper = db.posts.filter((x) => x.helperId === p.userId);
+  const helperDone = asHelper.filter((x) => x.status === "completed").length;
+  const helperClosed = asHelper.filter((x) => x.status === "completed" || x.status === "cancelled").length;
+  const hours = db.posts
+    .filter((x) => x.status === "completed" && x.helperId === p.userId)
+    .reduce((s, x) => s + hoursFromEstimate(x.estimatedTime), p.hoursGiven || 0);
+  return {
+    userId: p.userId,
+    name: p.name,
+    username: p.username,
+    bio: p.bio,
+    city: p.city,
+    area: p.area,
+    photoUrl: p.photoUrl,
+    avatarHue: p.avatarHue,
+    skills: p.skills,
+    needHelpWith: p.needHelpWith,
+    interests: p.interests,
+    reputation: p.reputation,
+    favorsGiven: p.favorsGiven,
+    favorsReceived: p.favorsReceived,
+    peopleHelped: p.favorsGiven,
+    hoursGiven: Math.round(hours * 10) / 10,
+    streak: p.streak,
+    level: p.level,
+    verified: p.verified,
+    phoneVerified: p.phoneVerified,
+    plus: p.plus,
+    plusStatus: p.plusStatus,
+    createdAt: p.createdAt,
+    completionRate: helperClosed ? Math.round((helperDone / helperClosed) * 100) : p.completionRate || p.reputation,
+    responseRate: p.responseRate || Math.min(99, p.reputation + 1),
+    circleNames,
+  };
 }
 function reservedOf(userId: string) {
   return load()
-    .posts.filter((p) => p.userId === userId && p.type === "request" && ["open", "accepted", "pending_confirm"].includes(p.status))
+    .posts.filter(
+      (p) =>
+        p.userId === userId &&
+        p.type === "request" &&
+        p.helpType !== "kindness" &&
+        p.creditReward > 0 &&
+        ["open", "accepted", "in_progress", "pending_confirm"].includes(p.status),
+    )
     .reduce((s, p) => s + p.creditReward, 0);
 }
 function toMe(p: Person): ProfileMe {
@@ -422,18 +563,70 @@ function toMe(p: Person): ProfileMe {
     onboardingComplete: p.onboardingComplete,
     lat: p.lat,
     lng: p.lng,
+    circleIds: p.circleIds ?? [],
   };
 }
 function notify(userId: string, title: string, body: string, href: string, type = "note") {
   if (userId !== load().selfId) return;
   load().notifs.unshift({ id: nid("n"), type, title, body, href, read: false, createdAt: now() });
 }
+
+function haversine(a: { lat: number | null; lng: number | null }, b: { lat: number | null; lng: number | null }) {
+  if (a.lat == null || a.lng == null || b.lat == null || b.lng == null) return null;
+  const R = 6371;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s)) * 10) / 10;
+}
+
+function skillHit(skills: string[], category: string) {
+  const cat = (LEGACY_CATEGORY[category] ?? category).toLowerCase();
+  return skills.some((s) => {
+    const n = s.toLowerCase();
+    if (n === cat) return true;
+    if (cat.includes("techn") && n.includes("techn")) return true;
+    if (cat === "home" && (n.includes("household") || n.includes("repair"))) return true;
+    if (cat === "moving" && n.includes("mov")) return true;
+    if (cat === "transport" && n.includes("driv")) return true;
+    if (cat === "shopping" && (n.includes("shop") || n.includes("errand"))) return true;
+    if (cat === "learning" && n.includes("teach")) return true;
+    if (cat === "pets" && n.includes("pet")) return true;
+    return false;
+  });
+}
+
+function matchScore(post: Post, me: Person, km: number | null) {
+  let s = 0;
+  if (km == null) s += 8;
+  else if (km < 1) s += 40;
+  else if (km < 3) s += 25;
+  else if (km < 8) s += 12;
+  else s += 4;
+  if (skillHit(me.skills, post.category)) s += 32;
+  const author = person(post.userId);
+  if (author) s += Math.round(author.reputation / 8);
+  if (post.circleId && me.circleIds.includes(post.circleId)) s += 22;
+  const together = load().posts.some(
+    (x) => x.status === "completed" && ((x.userId === me.userId && x.helperId === post.userId) || (x.helperId === me.userId && x.userId === post.userId)),
+  );
+  if (together) s += 16;
+  if (post.boostedUntil && new Date(post.boostedUntil) > new Date()) s += 8;
+  if (post.whenNeeded?.startsWith("Today")) s += 6;
+  return s;
+}
+
 function card(post: Post): PostCard {
   const author = person(post.userId)!;
   const helper = post.helperId ? person(post.helperId) : null;
   const db = load();
+  const me = self();
   const pending = db.offers.filter((o) => o.postId === post.id && o.status === "pending").length;
   const mine = db.offers.find((o) => o.postId === post.id && o.helperId === db.selfId);
+  const km = haversine(me, author);
+  const circle = post.circleId ? db.circles.find((c) => c.id === post.circleId) : null;
   return {
     id: post.id,
     type: post.type,
@@ -444,11 +637,18 @@ function card(post: Post): PostCard {
     area: post.area,
     estimatedTime: post.estimatedTime,
     creditReward: post.creditReward,
+    helpType: post.helpType ?? "favor",
+    whenNeeded: post.whenNeeded ?? "Flexible",
+    photoUrl: post.photoUrl ?? null,
+    circleId: post.circleId ?? null,
+    circleName: circle?.name ?? null,
     status: post.status,
+    lifecycle: lifecycleLabel(post.status, pending),
     deadline: post.deadline,
     boostedUntil: post.boostedUntil,
     createdAt: post.createdAt,
-    distanceKm: 1.2,
+    distanceKm: km,
+    matchScore: matchScore(post, me, km),
     bookmarked: db.bookmarks.includes(post.id),
     author: toPublic(author),
     helper: helper ? toPublic(helper) : null,
@@ -566,27 +766,51 @@ export async function joinPlusWaitlist() {
   });
 }
 
-export async function createPost(raw: DataArg<{ type: "request" | "offer"; title: string; description: string; category: string; estimatedTime: string; creditReward: number; deadline: string | null }>) {
+export async function createPost(
+  raw: DataArg<{
+    type: "request" | "offer";
+    title: string;
+    description: string;
+    category: string;
+    estimatedTime: string;
+    creditReward: number;
+    deadline: string | null;
+    helpType?: string;
+    whenNeeded?: string;
+    photoUrl?: string | null;
+    circleId?: string | null;
+  }>,
+) {
   const data = arg(raw, {} as never);
   const me = self();
   if (!data.title || data.title.trim().length < 4) return fail("Add a short title so neighbors know what you need.");
-  if (!CATEGORIES.includes(data.category as (typeof CATEGORIES)[number])) return fail("Pick a valid category.");
+  const category = LEGACY_CATEGORY[data.category] ?? data.category;
+  if (!CATEGORIES.includes(category as (typeof CATEGORIES)[number])) return fail("Pick a valid category.");
   if (!TIMES.includes(data.estimatedTime as (typeof TIMES)[number])) return fail("Pick a time estimate.");
-  const reward = Math.min(MAX_REWARD, Math.max(MIN_REWARD, Math.round(data.creditReward || 2)));
-  if (data.type === "request" && toMe(me).available < reward) {
-    return fail(`You need ${reward} available credits. You have ${toMe(me).available} free.`);
+  const helpType = HELP_TYPES.some((h) => h.id === data.helpType) ? data.helpType! : "favor";
+  const whenNeeded = (WHEN_OPTS as readonly string[]).includes(data.whenNeeded ?? "") ? data.whenNeeded! : "Flexible";
+  const reward =
+    helpType === "kindness" ? 0 : Math.min(MAX_REWARD, Math.max(helpType === "favor" ? 1 : MIN_REWARD, Math.round(data.creditReward || 2)));
+  if (data.type === "request" && reward > 0 && toMe(me).available < reward) {
+    return fail(`You need ${reward} available favors in exchange. You have ${toMe(me).available} free.`);
   }
+  if (data.photoUrl && data.photoUrl.length > PHOTO_MAX_CHARS) return fail("Photo is too large.");
+  const circleId = data.circleId && me.circleIds.includes(data.circleId) ? data.circleId : null;
   const post: Post = {
     id: nid("p"),
     userId: me.userId,
     type: data.type,
     title: data.title.slice(0, 140),
     description: data.description ?? "",
-    category: data.category,
+    category,
     city: me.city,
     area: me.area,
     estimatedTime: data.estimatedTime,
     creditReward: reward,
+    helpType,
+    whenNeeded,
+    photoUrl: data.photoUrl ?? null,
+    circleId,
     status: "open",
     deadline: data.deadline,
     boostedUntil: null,
@@ -596,7 +820,9 @@ export async function createPost(raw: DataArg<{ type: "request" | "offer"; title
   const db = load();
   db.posts.unshift(post);
   if (data.type === "request") {
-    const helper = NEIGHBORS.find((n) => n.skills.some((s) => s.toLowerCase().includes(data.category.toLowerCase().slice(0, 4)))) ?? NEIGHBORS[0];
+    const helper =
+      NEIGHBORS.filter((n) => !circleId || n.circleIds.includes(circleId))
+        .sort((a, b) => Number(skillHit(b.skills, category)) - Number(skillHit(a.skills, category)))[0] ?? NEIGHBORS[0];
     db.offers.unshift({
       id: nid("o"),
       postId: post.id,
@@ -606,26 +832,42 @@ export async function createPost(raw: DataArg<{ type: "request" | "offer"; title
       status: "pending",
       createdAt: now(),
     });
-    notify(me.userId, "New offer to help", `${helper.name} offered on “${post.title}”.`, `/app/favor/${post.id}`, "new_offer");
+    const km = haversine(me, helper);
+    notify(
+      me.userId,
+      km != null ? `Someone ${km < 1 ? `${Math.round(km * 1000)}m` : `${km} km`} away can help` : "New offer to help",
+      `${helper.name} offered on “${post.title}”.`,
+      `/app/favor/${post.id}`,
+      "new_offer",
+    );
   }
   save();
   return ok(card(post));
 }
 
-export async function listDiscover(raw?: DataArg<{ q?: string; category?: string; type?: string; sort?: string; nearby?: boolean }>) {
-  const data = arg(raw, { q: "", category: "All", type: "all", sort: "newest", nearby: false });
+export async function listDiscover(raw?: DataArg<{ q?: string; category?: string; type?: string; sort?: string; nearby?: boolean; circleId?: string; skillsOnly?: boolean }>) {
+  const data = arg(raw, { q: "", category: "All", type: "all", sort: "newest", nearby: false, circleId: "", skillsOnly: false });
   const db = load();
-  let cards = db.posts.filter((p) => p.status === "open" && p.userId !== db.selfId && !db.blocks.includes(p.userId)).map(card);
+  const me = self();
+  let cards = db.posts
+    .filter((p) => p.status === "open" && p.userId !== db.selfId && !db.blocks.includes(p.userId))
+    .filter((p) => !p.circleId || me.circleIds.includes(p.circleId) || p.userId === me.userId)
+    .map(card);
   if (data.type === "offer" || data.type === "request") cards = cards.filter((c) => c.type === data.type);
   if (data.category && data.category !== "All" && data.category !== "Nearby") cards = cards.filter((c) => c.category === data.category);
+  if (data.circleId) cards = cards.filter((c) => c.circleId === data.circleId);
+  if (data.skillsOnly) cards = cards.filter((c) => skillHit(me.skills, c.category));
   if (data.q) {
     const q = data.q.toLowerCase();
-    cards = cards.filter((c) => `${c.title} ${c.description} ${c.category} ${c.author.name}`.toLowerCase().includes(q));
+    cards = cards.filter((c) => `${c.title} ${c.description} ${c.category} ${c.author.name} ${c.helpType}`.toLowerCase().includes(q));
   }
   cards.sort((a, b) => {
+    if (data.sort === "closest") return (a.distanceKm ?? 99) - (b.distanceKm ?? 99);
+    if (data.sort === "match") return b.matchScore - a.matchScore;
+    if (data.sort === "reward") return b.creditReward - a.creditReward;
+    if (data.sort === "quickest") return a.estimatedTime.localeCompare(b.estimatedTime);
     const boost = Number(!!(b.boostedUntil && new Date(b.boostedUntil) > new Date())) - Number(!!(a.boostedUntil && new Date(a.boostedUntil) > new Date()));
     if (boost) return boost;
-    if (data.sort === "reward") return b.creditReward - a.creditReward;
     return +new Date(b.createdAt) - +new Date(a.createdAt);
   });
   return ok(cards);
@@ -867,13 +1109,28 @@ export async function archiveConversation(raw: DataArg<{ id?: string; conversati
   return ok(true);
 }
 
+export async function startFavor(raw: DataArg<{ postId: string }>) {
+  const { postId } = arg(raw, { postId: "" });
+  const db = load();
+  const post = db.posts.find((p) => p.id === postId);
+  if (!post) return fail("Request not found.");
+  if (post.status !== "accepted") return fail("This favor is not ready to start.");
+  if (post.userId !== db.selfId && post.helperId !== db.selfId) return fail("Only people on this favor can start it.");
+  post.status = "in_progress";
+  notify(db.selfId, "Favor in progress", `“${post.title}” is underway. Approximate location stays private until you meet.`, `/app/favor/${post.id}`, "in_progress");
+  save();
+  return ok(true);
+}
+
 export async function requestComplete(raw: DataArg<{ postId: string }>) {
   const { postId } = arg(raw, { postId: "" });
   const db = load();
   const post = db.posts.find((p) => p.id === postId);
-  if (!post || post.helperId !== db.selfId || post.status !== "accepted") return fail("Only the helper can request completion on an accepted favor.");
+  if (!post || post.helperId !== db.selfId || !["accepted", "in_progress"].includes(post.status)) {
+    return fail("Only the helper can request completion on an accepted favor.");
+  }
   post.status = "pending_confirm";
-  notify(post.userId, "Helper marked this done", `Confirm “${post.title}” to send credits.`, `/app/favor/${post.id}`, "favor_completed");
+  notify(post.userId, "Your favor was completed", `Confirm “${post.title}” so both of you can leave a review.`, `/app/favor/${post.id}`, "favor_completed");
   save();
   return ok(true);
 }
@@ -884,15 +1141,19 @@ export async function confirmComplete(raw: DataArg<{ postId: string }>) {
   const post = db.posts.find((p) => p.id === postId);
   if (!post) return fail("Request not found.");
   if (post.userId !== db.selfId) return fail("Only the requester can confirm.");
-  if (post.status !== "pending_confirm" && post.status !== "accepted") return fail("Nothing to confirm yet.");
+  if (post.status !== "pending_confirm" && post.status !== "accepted" && post.status !== "in_progress") return fail("Nothing to confirm yet.");
   if (!post.helperId) return fail("No helper on this favor.");
   const requester = person(post.userId)!;
   const helper = person(post.helperId)!;
-  if (requester.credits < post.creditReward) return fail("Not enough credits to pay out.");
-  requester.credits -= post.creditReward;
-  helper.credits += post.creditReward;
+  if (post.creditReward > 0) {
+    if (requester.credits < post.creditReward) return fail("Not enough favors in exchange to complete this.");
+    requester.credits -= post.creditReward;
+    helper.credits += post.creditReward;
+  }
   requester.favorsReceived += 1;
   helper.favorsGiven += 1;
+  helper.hoursGiven = Math.round((helper.hoursGiven + hoursFromEstimate(post.estimatedTime)) * 10) / 10;
+  helper.peopleHelped = helper.favorsGiven;
   helper.level = levelFrom(helper.favorsGiven);
   post.status = "completed";
   db.txs.unshift({
@@ -907,6 +1168,7 @@ export async function confirmComplete(raw: DataArg<{ postId: string }>) {
     createdAt: now(),
   });
   bumpChallenge();
+  notify(helper.userId, "You helped someone today", `${requester.name} confirmed “${post.title}”.`, `/app/favor/${post.id}`, "helped");
   save();
   return ok(true);
 }
@@ -914,6 +1176,12 @@ export async function confirmComplete(raw: DataArg<{ postId: string }>) {
 export async function submitReview(raw: DataArg<{ favorId: string; toUserId: string; stars: number; tags: string[]; body: string }>) {
   const data = arg(raw, {} as never);
   const db = load();
+  if (db.reviews.some((r) => r.favorId === data.favorId && r.fromUserId === db.selfId)) {
+    return fail("You already reviewed this favor.");
+  }
+  const post = db.posts.find((p) => p.id === data.favorId);
+  if (!post || post.status !== "completed") return fail("Reviews are only for completed favors.");
+  if (post.userId !== db.selfId && post.helperId !== db.selfId) return fail("Only people on this favor can review it.");
   db.reviews.unshift({
     id: nid("r"),
     favorId: data.favorId,
@@ -931,6 +1199,7 @@ export async function submitReview(raw: DataArg<{ favorId: string; toUserId: str
     const avg = mine.reduce((s, r) => s + r.stars, 0) / mine.length;
     target.reputation = Math.round(70 + avg * 6);
   }
+  notify(db.selfId, "Someone you helped just thanked you", "A review from a completed favor was added.", `/app/profile/${data.toUserId}`, "thanks");
   save();
   return ok(true);
 }
@@ -970,7 +1239,7 @@ export async function getWallet() {
       };
     });
   const pending = db.posts
-    .filter((p) => p.userId === me.userId && p.type === "request" && ["open", "accepted", "pending_confirm"].includes(p.status))
+    .filter((p) => p.userId === me.userId && p.type === "request" && ["open", "accepted", "in_progress", "pending_confirm"].includes(p.status))
     .map((p) => ({ id: p.id, title: p.title, amount: p.creditReward, status: p.status }));
   return ok({
     credits: me.credits,
@@ -1046,22 +1315,79 @@ export async function markNotificationsRead() {
 export async function getHome() {
   const db = load();
   const me = toMe(self());
-  const mine = db.posts.filter((p) => p.userId === me.userId && ["open", "accepted", "pending_confirm"].includes(p.status)).map(card);
-  const helping = db.posts.filter((p) => p.helperId === me.userId && ["accepted", "pending_confirm"].includes(p.status)).map(card);
-  const rec = (await listDiscover({ data: { type: "all", category: "All", sort: "newest", q: "" } })).ok
-    ? ((await listDiscover({ data: { type: "all", category: "All", sort: "newest", q: "" } })) as { ok: true; data: PostCard[] }).data.slice(0, 6)
-    : [];
+  const mine = db.posts.filter((p) => p.userId === me.userId && ["open", "accepted", "in_progress", "pending_confirm"].includes(p.status)).map(card);
+  const helping = db.posts.filter((p) => p.helperId === me.userId && ["accepted", "in_progress", "pending_confirm"].includes(p.status)).map(card);
+  const open = db.posts
+    .filter((p) => p.status === "open" && p.userId !== me.userId && p.type === "request" && !db.blocks.includes(p.userId))
+    .filter((p) => !p.circleId || me.circleIds.includes(p.circleId))
+    .map(card)
+    .sort((a, b) => b.matchScore - a.matchScore);
+  const skillMatches = open.filter((c) => skillHit(self().skills, c.category)).slice(0, 6);
   const people = db.people.filter((p) => p.userId !== me.userId).slice(0, 6).map(toPublic);
   const ch = await getChallenges();
+  const impact: Impact = {
+    favorsCompleted: self().favorsGiven + self().favorsReceived,
+    peopleHelped: self().favorsGiven,
+    hoursGiven: toPublic(self()).hoursGiven,
+    peopleHelpedYou: self().favorsReceived,
+  };
   const payload: HomePayload = {
     me,
     openMine: mine,
     helping,
-    recommended: rec,
+    recommended: open.slice(0, 8),
+    skillMatches,
     people,
     notifications: db.notifs.slice(0, 6),
     unread: db.notifs.filter((n) => !n.read).length,
     challenges: ch.ok ? ch.data.challenges : [],
+    impact,
+    circles: db.circles.map((c) => ({
+      id: c.id,
+      name: c.name,
+      kind: c.kind,
+      city: c.city,
+      memberCount: c.memberIds.length,
+      joined: c.memberIds.includes(me.userId),
+    })),
   };
   return ok(payload);
+}
+
+export async function listCircles() {
+  const db = load();
+  const rows: CircleRow[] = db.circles.map((c) => ({
+    id: c.id,
+    name: c.name,
+    kind: c.kind,
+    city: c.city,
+    memberCount: c.memberIds.length,
+    joined: c.memberIds.includes(db.selfId),
+  }));
+  return ok(rows);
+}
+
+export async function joinCircle(raw: DataArg<{ circleId: string; join?: boolean }>) {
+  const { circleId, join } = arg(raw, { circleId: "", join: true });
+  const db = load();
+  const c = db.circles.find((x) => x.id === circleId);
+  if (!c) return fail("Circle not found.");
+  const me = self();
+  if (join === false) {
+    c.memberIds = c.memberIds.filter((id) => id !== me.userId);
+    me.circleIds = me.circleIds.filter((id) => id !== c.id);
+  } else if (!c.memberIds.includes(me.userId)) {
+    c.memberIds.push(me.userId);
+    me.circleIds.push(c.id);
+  }
+  save();
+  return listCircles();
+}
+
+export async function saveHelpSkills(raw: DataArg<{ skills: string[] }>) {
+  const { skills } = arg(raw, { skills: [] as string[] });
+  const me = self();
+  me.skills = skills.slice(0, 8);
+  save();
+  return ok(toMe(me));
 }

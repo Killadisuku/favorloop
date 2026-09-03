@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { actorMiddleware as authMiddleware } from "@/lib/server/actor";
 import { getSql } from "@/lib/db";
-import { CATEGORIES, MAX_REWARD, MIN_REWARD, TIMES } from "@/lib/constants";
+import { CATEGORIES, lifecycleLabel, MAX_REWARD, MIN_REWARD, TIMES } from "@/lib/constants";
 import type { PostCard, ProfilePublic } from "@/lib/types";
 import {
   blockedSet,
@@ -83,13 +83,20 @@ async function hydrate(
           reputation: 70,
           favorsGiven: 0,
           favorsReceived: 0,
+          peopleHelped: 0,
+          hoursGiven: 0,
           streak: 0,
           level: 1,
           verified: false,
+          phoneVerified: false,
           plus: false,
           plusStatus: "free",
           createdAt: String(r.created_at),
+          completionRate: 70,
+          responseRate: 70,
+          circleNames: [],
         };
+    const pending = countMap.get(r.id) ?? 0;
     return {
       id: r.id,
       type: r.type,
@@ -100,15 +107,22 @@ async function hydrate(
       area: r.area,
       estimatedTime: r.estimated_time,
       creditReward: num(r.credit_reward),
+      helpType: "favor",
+      whenNeeded: "Flexible",
+      photoUrl: null,
+      circleId: null,
+      circleName: null,
       status: r.status,
+      lifecycle: lifecycleLabel(r.status, pending),
       deadline: r.deadline ? String(r.deadline) : null,
       boostedUntil: r.boosted_until ? String(r.boosted_until) : null,
       createdAt: String(r.created_at),
       distanceKm: haversineKm(from, { lat: r.lat, lng: r.lng }),
+      matchScore: 0,
       bookmarked: book.has(r.id),
       author,
       helper: helperRow ? toPublic(helperRow) : null,
-      pendingOfferCount: countMap.get(r.id) ?? 0,
+      pendingOfferCount: pending,
       myOfferStatus: mine.get(r.id) ?? null,
     };
   });

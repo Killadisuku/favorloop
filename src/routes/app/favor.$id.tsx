@@ -3,10 +3,10 @@ import { useState } from "react";
 import { Avatar } from "@/components/avatar";
 import { Back } from "@/components/back";
 import { IconChat, IconFlag, IconShield } from "@/components/icons";
-import { REVIEW_TAGS } from "@/lib/constants";
+import { REVIEW_TAGS, helpTypeLabel } from "@/lib/constants";
 import { formatDistance } from "@/lib/format";
 import { getMe } from "@/lib/loop";
-import { boostPost, cancelPost, getPost, toggleBookmark } from "@/lib/loop";
+import { boostPost, cancelPost, getPost, startFavor, toggleBookmark } from "@/lib/loop";
 import { confirmComplete, requestComplete } from "@/lib/loop";
 import { blockUser, decideOffer, getChatForPost, offerHelp, reportContent, submitReview } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
@@ -75,18 +75,24 @@ function FavorDetail() {
             </b>
             <span className="trust">{post.author.reputation}% Trust</span>
           </div>
-          <span className="chip">{post.status.replace("_", " ")}</span>
+          <span className="chip">{post.lifecycle}</span>
         </div>
         <h1 className="h2" style={{ marginTop: 14 }}>
           {post.title}
         </h1>
         <p>{post.description}</p>
+        {post.photoUrl ? <img src={post.photoUrl} alt="" className="post-photo" /> : null}
         <div className="meta">
           <span>{post.category}</span>
           <span>{formatDistance(post.distanceKm)}</span>
+          <span>{post.whenNeeded}</span>
           <span>{post.estimatedTime}</span>
-          <span className="chip gold">{post.creditReward} Favors</span>
+          <span className={`chip htype-${post.helpType}`}>{helpTypeLabel(post.helpType)}</span>
+          {post.circleName ? <span>{post.circleName}</span> : null}
         </div>
+        <p className="tiny" style={{ marginTop: 10 }}>
+          Approximate area only. Exact meeting details stay in chat after you accept.
+        </p>
       </div>
 
       <div className="card" style={{ marginTop: 12 }}>
@@ -105,7 +111,7 @@ function FavorDetail() {
       {post.status === "open" && !mine && (
         <div className="row" style={{ marginTop: 12 }}>
           <button className="btn btn-primary" disabled={busy || !!post.myOfferStatus} onClick={() => setConfirm(true)}>
-            {post.myOfferStatus ? `Offer ${post.myOfferStatus}` : "Offer help"}
+            {post.myOfferStatus ? `Offer ${post.myOfferStatus}` : "I can help"}
           </button>
           <button
             className="btn btn-ghost"
@@ -201,7 +207,18 @@ function FavorDetail() {
         </button>
       )}
 
-      {amHelper && post.status === "accepted" && (
+      {involved && (post.status === "accepted" || post.status === "in_progress") && (
+        <button
+          className="btn btn-soft btn-block"
+          style={{ marginTop: 12 }}
+          disabled={busy || post.status === "in_progress"}
+          onClick={() => void run(() => startFavor({ data: { postId: post.id } }), "Marked in progress")}
+        >
+          {post.status === "in_progress" ? "In progress" : "We're starting"}
+        </button>
+      )}
+
+      {amHelper && (post.status === "accepted" || post.status === "in_progress") && (
         <button
           className="btn btn-soft btn-block"
           style={{ marginTop: 12 }}
@@ -212,12 +229,12 @@ function FavorDetail() {
         </button>
       )}
 
-      {mine && (post.status === "accepted" || post.status === "pending_confirm") && (
+      {mine && (post.status === "accepted" || post.status === "in_progress" || post.status === "pending_confirm") && (
         <button
           className="btn btn-primary btn-block"
           style={{ marginTop: 12 }}
           disabled={busy}
-          onClick={() => void run(() => confirmComplete({ data: { postId: post.id } }), "Credits transferred")}
+          onClick={() => void run(() => confirmComplete({ data: { postId: post.id } }), "Favor completed")}
         >
           Confirm completion
         </button>

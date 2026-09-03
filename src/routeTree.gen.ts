@@ -19,7 +19,9 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppActivityRouteImport } from './routes/app/activity'
 import { Route as AppChallengesRouteImport } from './routes/app/challenges'
+import { Route as AppCirclesRouteImport } from './routes/app/circles'
 import { Route as AppDiscoverRouteImport } from './routes/app/discover'
+import { Route as AppHelpRouteImport } from './routes/app/help'
 import { Route as AppInboxRouteImport } from './routes/app/inbox'
 import { Route as AppPlusRouteImport } from './routes/app/plus'
 import { Route as AppPostRouteImport } from './routes/app/post'
@@ -84,9 +86,19 @@ const AppChallengesRoute = AppChallengesRouteImport.update({
   path: '/challenges',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCirclesRoute = AppCirclesRouteImport.update({
+  id: '/circles',
+  path: '/circles',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDiscoverRoute = AppDiscoverRouteImport.update({
   id: '/discover',
   path: '/discover',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppHelpRoute = AppHelpRouteImport.update({
+  id: '/help',
+  path: '/help',
   getParentRoute: () => AppRoute,
 } as any)
 const AppInboxRoute = AppInboxRouteImport.update({
@@ -165,7 +177,9 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/app/activity': typeof AppActivityRoute
   '/app/challenges': typeof AppChallengesRoute
+  '/app/circles': typeof AppCirclesRoute
   '/app/discover': typeof AppDiscoverRoute
+  '/app/help': typeof AppHelpRoute
   '/app/inbox': typeof AppInboxRoute
   '/app/plus': typeof AppPlusRoute
   '/app/post': typeof AppPostRoute
@@ -190,7 +204,9 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/app/activity': typeof AppActivityRoute
   '/app/challenges': typeof AppChallengesRoute
+  '/app/circles': typeof AppCirclesRoute
   '/app/discover': typeof AppDiscoverRoute
+  '/app/help': typeof AppHelpRoute
   '/app/inbox': typeof AppInboxRoute
   '/app/plus': typeof AppPlusRoute
   '/app/post': typeof AppPostRoute
@@ -216,7 +232,9 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/app/activity': typeof AppActivityRoute
   '/app/challenges': typeof AppChallengesRoute
+  '/app/circles': typeof AppCirclesRoute
   '/app/discover': typeof AppDiscoverRoute
+  '/app/help': typeof AppHelpRoute
   '/app/inbox': typeof AppInboxRoute
   '/app/plus': typeof AppPlusRoute
   '/app/post': typeof AppPostRoute
@@ -244,7 +262,9 @@ export interface FileRouteTypes {
     | '/signup'
     | '/app/activity'
     | '/app/challenges'
+    | '/app/circles'
     | '/app/discover'
+    | '/app/help'
     | '/app/inbox'
     | '/app/plus'
     | '/app/post'
@@ -269,7 +289,9 @@ export interface FileRouteTypes {
     | '/signup'
     | '/app/activity'
     | '/app/challenges'
+    | '/app/circles'
     | '/app/discover'
+    | '/app/help'
     | '/app/inbox'
     | '/app/plus'
     | '/app/post'
@@ -294,7 +316,9 @@ export interface FileRouteTypes {
     | '/signup'
     | '/app/activity'
     | '/app/challenges'
+    | '/app/circles'
     | '/app/discover'
+    | '/app/help'
     | '/app/inbox'
     | '/app/plus'
     | '/app/post'
@@ -394,11 +418,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppChallengesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/circles': {
+      id: '/app/circles'
+      path: '/circles'
+      fullPath: '/app/circles'
+      preLoaderRoute: typeof AppCirclesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/discover': {
       id: '/app/discover'
       path: '/discover'
       fullPath: '/app/discover'
       preLoaderRoute: typeof AppDiscoverRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/help': {
+      id: '/app/help'
+      path: '/help'
+      fullPath: '/app/help'
+      preLoaderRoute: typeof AppHelpRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/inbox': {
@@ -512,7 +550,9 @@ const AppProfileRouteWithChildren = AppProfileRoute._addFileChildren(
 interface AppRouteChildren {
   AppActivityRoute: typeof AppActivityRoute
   AppChallengesRoute: typeof AppChallengesRoute
+  AppCirclesRoute: typeof AppCirclesRoute
   AppDiscoverRoute: typeof AppDiscoverRoute
+  AppHelpRoute: typeof AppHelpRoute
   AppInboxRoute: typeof AppInboxRoute
   AppPlusRoute: typeof AppPlusRoute
   AppPostRoute: typeof AppPostRoute
@@ -529,7 +569,9 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppActivityRoute: AppActivityRoute,
   AppChallengesRoute: AppChallengesRoute,
+  AppCirclesRoute: AppCirclesRoute,
   AppDiscoverRoute: AppDiscoverRoute,
+  AppHelpRoute: AppHelpRoute,
   AppInboxRoute: AppInboxRoute,
   AppPlusRoute: AppPlusRoute,
   AppPostRoute: AppPostRoute,

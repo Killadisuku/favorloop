@@ -1,9 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { FavorCard } from "@/components/favor-card";
-import { Avatar } from "@/components/avatar";
-import { IconLoop } from "@/components/icons";
-import { greeting, relativeTime } from "@/lib/format";
 import { APP_NAME } from "@/lib/constants";
+import { relativeTime } from "@/lib/format";
 import { getHome } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 
@@ -31,50 +29,29 @@ function Home() {
       </div>
     );
   }
-  const { me, recommended, people, notifications, challenges, openMine, helping } = data;
+  const { me, recommended, skillMatches, notifications, openMine, helping, impact, circles } = data;
   return (
     <div>
-      <div className="page-h">
-        <div>
-          <p className="kicker">{APP_NAME} · {me.area || me.city || "Nearby"}</p>
-          <h1 className="h1">
-            {greeting()}, {me.name}
-          </h1>
-        </div>
-      </div>
-
-      <section className="card balance">
-        <div className="label">Favor balance</div>
-        <div className="num">{me.credits}</div>
-        <div className="hint">
-          {me.available} available · {me.reserved} reserved on open requests
-        </div>
-        <div className="tiny" style={{ marginTop: 8, opacity: 0.7 }}>
-          Credits stay inside the community. They are not cash.
+      <p className="kicker">
+        {APP_NAME} · {me.area || me.city || "Nearby"}
+      </p>
+      <section className="ask-hero">
+        <h1 className="h1">What do you need a hand with?</h1>
+        <p className="tiny">Ask a neighbor, or offer the help you already have.</p>
+        <div className="ask-actions">
+          <Link className="btn btn-primary" to="/app/post">
+            Ask for help
+          </Link>
+          <Link className="btn btn-ghost" to="/app/help">
+            I can help
+          </Link>
         </div>
       </section>
-
-      <div className="row" style={{ marginTop: 12 }}>
-        <Link className="btn btn-primary" to="/app/post">
-          Ask for help
-        </Link>
-        <Link className="btn btn-ghost" to="/app/discover">
-          Help someone
-        </Link>
-      </div>
-
-      <div className="card" style={{ marginTop: 12 }}>
-        <b>{me.streak}-day helping streak</b>
-        <div className="tiny">Help today to keep the loop warm. Reputation {me.reputation}%.</div>
-        <Link className="chip" to="/app/challenges" style={{ marginTop: 8, display: "inline-flex" }}>
-          Challenges
-        </Link>
-      </div>
 
       {openMine.length > 0 && (
         <>
           <div className="pulse">
-            <h2 className="h2">Your open requests</h2>
+            <h2 className="h2">Your requests</h2>
           </div>
           {openMine.map((f) => (
             <FavorCard key={f.id} favor={f} />
@@ -94,8 +71,8 @@ function Home() {
 
       <div className="pulse">
         <div>
-          <h2 className="h2">Community pulse</h2>
-          <p className="tiny">Open requests from neighbors</p>
+          <h2 className="h2">Requests near you</h2>
+          <p className="tiny">Matched by distance, skills, and reliability</p>
         </div>
         <Link className="tiny" to="/app/discover">
           See all
@@ -103,44 +80,85 @@ function Home() {
       </div>
       {recommended.length === 0 && (
         <div className="card empty">
-          <IconLoop />
-          <p>Quiet for a moment. Post a request or check back when neighbors join.</p>
+          <p>Quiet nearby. Ask for help, or check your Circles.</p>
         </div>
       )}
       {recommended.map((f) => (
-        <FavorCard key={f.id} favor={f} cta="Offer help" />
+        <FavorCard key={f.id} favor={f} cta="I can help" />
       ))}
 
-      {people.length > 0 && (
+      {skillMatches.length > 0 && (
         <>
           <div className="pulse">
-            <h2 className="h2">Neighbors to know</h2>
+            <div>
+              <h2 className="h2">People who need your skills</h2>
+              <p className="tiny">{me.skills.slice(0, 3).join(" · ") || "Add skills to match better"}</p>
+            </div>
+            <Link className="tiny" to="/app/help">
+              Update
+            </Link>
           </div>
-          <div className="card">
-            {people.map((p) => (
-              <Link key={p.userId} to="/app/profile/$id" params={{ id: p.userId }} className="tx">
-                <div style={{ display: "flex", gap: 10, alignItems: "center", minWidth: 0 }}>
-                  <Avatar user={p} size="sm" />
-                  <div>
-                    <b>{p.name}</b>
-                    <div className="tiny">{p.skills.slice(0, 3).join(" · ") || p.city}</div>
-                  </div>
-                </div>
-                <span className="tiny">{p.reputation}%</span>
-              </Link>
-            ))}
-          </div>
+          {skillMatches.map((f) => (
+            <FavorCard key={`s-${f.id}`} favor={f} cta="I can help" />
+          ))}
         </>
       )}
 
       <div className="pulse">
-        <h2 className="h2">Recent activity</h2>
+        <h2 className="h2">Your {APP_NAME}</h2>
+        <Link className="tiny" to="/app/profile">
+          Trust
+        </Link>
+      </div>
+      <div className="impact-grid">
+        <div className="stat">
+          <b>{impact.favorsCompleted}</b>
+          <span>Favors completed</span>
+        </div>
+        <div className="stat">
+          <b>{impact.peopleHelped}</b>
+          <span>People helped</span>
+        </div>
+        <div className="stat">
+          <b>{impact.hoursGiven}h</b>
+          <span>Time given</span>
+        </div>
+        <div className="stat">
+          <b>{impact.peopleHelpedYou}</b>
+          <span>People who helped you</span>
+        </div>
+      </div>
+
+      <div className="pulse">
+        <h2 className="h2">Your Circles</h2>
+        <Link className="tiny" to="/app/circles">
+          Manage
+        </Link>
+      </div>
+      <div className="card">
+        {circles.filter((c) => c.joined).length === 0 && <p className="tiny">Join a Circle to ask people you already trust first.</p>}
+        {circles
+          .filter((c) => c.joined)
+          .map((c) => (
+            <Link key={c.id} className="tx" to="/app/circles">
+              <div>
+                <b>{c.name}</b>
+                <div className="tiny">
+                  {c.kind} · {c.memberCount} members
+                </div>
+              </div>
+            </Link>
+          ))}
+      </div>
+
+      <div className="pulse">
+        <h2 className="h2">Activity</h2>
         <Link className="tiny" to="/app/activity">
           All
         </Link>
       </div>
       <div className="card activity">
-        {notifications.length === 0 && <p className="empty">The loop is quiet.</p>}
+        {notifications.length === 0 && <p className="empty">Quiet for now.</p>}
         {notifications.map((n) => (
           <article
             key={n.id}
@@ -159,25 +177,6 @@ function Home() {
           </article>
         ))}
       </div>
-
-      <div className="pulse">
-        <h2 className="h2">Challenges</h2>
-      </div>
-      {challenges.slice(0, 3).map((c) => (
-        <div className="card" key={c.id}>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <b>{c.title}</b>
-            <span className="chip gold">+{c.reward}</span>
-          </div>
-          <div className="bar" style={{ marginTop: 8 }}>
-            <i style={{ width: `${Math.min(100, (c.progress / c.goal) * 100)}%` }} />
-          </div>
-          <div className="tiny" style={{ marginTop: 6 }}>
-            {c.progress}/{c.goal}
-            {c.completed ? " · done" : ""}
-          </div>
-        </div>
-      ))}
     </div>
   );
 }

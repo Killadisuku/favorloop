@@ -15,12 +15,18 @@ export type ProfilePublic = {
   reputation: number;
   favorsGiven: number;
   favorsReceived: number;
+  peopleHelped: number;
+  hoursGiven: number;
   streak: number;
   level: number;
   verified: boolean;
+  phoneVerified: boolean;
   plus: boolean;
   plusStatus: string;
   createdAt: string;
+  completionRate: number;
+  responseRate: number;
+  circleNames: string[];
 };
 
 export type ProfileMe = ProfilePublic & {
@@ -31,6 +37,7 @@ export type ProfileMe = ProfilePublic & {
   onboardingComplete: boolean;
   lat: number | null;
   lng: number | null;
+  circleIds: string[];
 };
 
 export type PostCard = {
@@ -43,11 +50,18 @@ export type PostCard = {
   area: string;
   estimatedTime: string;
   creditReward: number;
+  helpType: string;
+  whenNeeded: string;
+  photoUrl: string | null;
+  circleId: string | null;
+  circleName: string | null;
   status: string;
+  lifecycle: string;
   deadline: string | null;
   boostedUntil: string | null;
   createdAt: string;
   distanceKm: number | null;
+  matchScore: number;
   bookmarked: boolean;
   author: ProfilePublic;
   helper: ProfilePublic | null;
@@ -131,13 +145,32 @@ export type ChallengeRow = {
   rewarded: boolean;
 };
 
+export type CircleRow = {
+  id: string;
+  name: string;
+  kind: string;
+  city: string;
+  memberCount: number;
+  joined: boolean;
+};
+
+export type Impact = {
+  favorsCompleted: number;
+  peopleHelped: number;
+  hoursGiven: number;
+  peopleHelpedYou: number;
+};
+
 export type HomePayload = {
   me: ProfileMe;
   openMine: PostCard[];
   helping: PostCard[];
   recommended: PostCard[];
+  skillMatches: PostCard[];
   people: ProfilePublic[];
   notifications: NotifRow[];
   unread: number;
   challenges: ChallengeRow[];
+  impact: Impact;
+  circles: CircleRow[];
 };

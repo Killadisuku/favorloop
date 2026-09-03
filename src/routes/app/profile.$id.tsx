@@ -2,7 +2,6 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Avatar } from "@/components/avatar";
 import { Back } from "@/components/back";
 import { IconChat } from "@/components/icons";
-import { levelFor } from "@/lib/constants";
 import { getProfile } from "@/lib/loop";
 import { blockUser, reportContent, startDirectChat } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
@@ -38,7 +37,6 @@ function OtherProfile() {
     );
   }
   const p = data.profile;
-  const lvl = levelFor(p.favorsGiven);
   return (
     <div>
       <Back to="/app/discover" />
@@ -46,24 +44,35 @@ function OtherProfile() {
         <Avatar user={p} size="lg" />
         <div>
           <h1 className="h1">{p.name}</h1>
-          <div className="trust">{p.reputation}% Trust</div>
           <div className="tiny">
-            @{p.username} · {lvl.name}
+            @{p.username} · {p.area || p.city}
           </div>
         </div>
       </div>
-      <div className="stat-grid" style={{ marginTop: 16 }}>
+      <section className="card trust-card">
+        <p className="kicker">Onegai Trust</p>
+        <ul className="trust-list">
+          <li>{p.verified ? "Identity verified" : "Identity not verified yet"}</li>
+          <li>{p.phoneVerified ? "Phone verified" : "Phone not verified yet"}</li>
+          <li>{p.favorsGiven} favors completed</li>
+          <li>Helped {p.peopleHelped} people</li>
+          <li>{p.reputation}% reliable</li>
+          <li>{p.completionRate}% completion rate</li>
+          <li>Member of {p.circleNames.length} Circles</li>
+        </ul>
+      </section>
+      <div className="impact-grid">
         <div className="stat">
           <b>{p.favorsGiven}</b>
-          <span>Given</span>
+          <span>Completed</span>
+        </div>
+        <div className="stat">
+          <b>{p.hoursGiven}h</b>
+          <span>Time given</span>
         </div>
         <div className="stat">
           <b>{p.favorsReceived}</b>
-          <span>Received</span>
-        </div>
-        <div className="stat">
-          <b>{p.streak}</b>
-          <span>Streak</span>
+          <span>Helped by others</span>
         </div>
       </div>
       <div className="card" style={{ marginTop: 12 }}>

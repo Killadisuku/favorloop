@@ -254,6 +254,99 @@
   font-weight: 600;
 }
 
+.ask-hero {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 22px 20px;
+  box-shadow: var(--shadow);
+  margin: 10px 0 18px;
+}
+.ask-hero .h1 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(28px, 7vw, 40px);
+  letter-spacing: -0.03em;
+  line-height: 1.12;
+}
+.ask-hero .tiny {
+  margin-top: 8px;
+  max-width: 42ch;
+}
+.ask-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+.impact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.help-types {
+  display: grid;
+  gap: 8px;
+}
+.help-type {
+  text-align: left;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 16px;
+  padding: 12px 14px;
+  min-height: 64px;
+}
+.help-type b {
+  display: block;
+  margin-bottom: 4px;
+}
+.help-type span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.help-type.on {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--paper));
+}
+.htype-kindness {
+  background: #e7eee6;
+  color: var(--accent);
+}
+.htype-favor {
+  background: var(--gold-2);
+  color: #3a2c10;
+}
+.htype-paid {
+  background: var(--bg-2);
+}
+.trust-card {
+  margin: 16px 0;
+}
+.trust-list {
+  margin: 12px 0;
+  padding: 0 0 0 18px;
+  color: var(--ink-2);
+  line-height: 1.55;
+}
+.req-card {
+  display: block;
+}
+.req-cta {
+  display: inline-flex;
+  margin-top: 10px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.post-photo {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 14px;
+  margin: 10px 0;
+}
+
 .card {
   background: var(--paper);
   border: 1px solid var(--line);

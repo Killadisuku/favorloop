@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Back } from "@/components/back";
 import { relativeTime } from "@/lib/format";
-import { APP_NAME } from "@/lib/constants";
 import { getWallet } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 
@@ -22,9 +21,9 @@ function Wallet() {
   }
   return (
     <div>
-      <Back to="/app" label="Wallet" />
+      <Back to="/app" label="Favor exchange" />
       <section className="card balance">
-        <div className="label">Current balance</div>
+        <div className="label">Favor exchange</div>
         <div className="num">{data.credits}</div>
         <div className="hint">
           {data.available} available · {data.reserved} reserved
@@ -33,11 +32,11 @@ function Wallet() {
       <div className="stat-grid" style={{ marginTop: 12 }}>
         <div className="stat">
           <b>{data.earned}</b>
-          <span>Earned</span>
+          <span>Received</span>
         </div>
         <div className="stat">
           <b>{data.spent}</b>
-          <span>Spent</span>
+          <span>Given</span>
         </div>
         <div className="stat">
           <b>{data.reserved}</b>
@@ -45,7 +44,7 @@ function Wallet() {
         </div>
       </div>
       <p className="tiny" style={{ margin: "12px 0 18px" }}>
-        Credits are not cash. They are community credits used inside {APP_NAME}. They move when a requester confirms a favor.
+        Kindness needs none of this. Favor exchange is optional, and only moves after both people confirm a completed favor. It is not money.
       </p>
       {data.pending.length > 0 && (
         <>

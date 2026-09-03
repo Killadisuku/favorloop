@@ -422,10 +422,12 @@ export const getHome = createServerFn({ method: "GET" })
         onboardingComplete: Boolean(fresh.onboarding_complete),
         lat: fresh.lat == null ? null : num(fresh.lat),
         lng: fresh.lng == null ? null : num(fresh.lng),
+        circleIds: [],
       },
       openMine: await loadPostCards(mineRows.map((r) => r.id), fresh),
       helping: await loadPostCards(helpRows.map((r) => r.id), fresh),
       recommended: await loadPostCards(recIds, fresh),
+      skillMatches: [],
       people,
       notifications: notif.map((n) => ({
         id: n.id,
@@ -448,6 +450,13 @@ export const getHome = createServerFn({ method: "GET" })
         completed: Boolean(c.completed),
         rewarded: Boolean(c.rewarded),
       })),
+      impact: {
+        favorsCompleted: num(fresh.favors_given) + num(fresh.favors_received),
+        peopleHelped: num(fresh.favors_given),
+        hoursGiven: Math.round(num(fresh.favors_given) * 0.7 * 10) / 10,
+        peopleHelpedYou: num(fresh.favors_received),
+      },
+      circles: [],
     };
     return ok(payload);
   });

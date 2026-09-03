@@ -22,10 +22,11 @@ function Safety() {
           ask you to handle someone else's money.
         </p>
         <ul>
+          <li>Meet in public when you can. Share exact location only in chat after you accept.</li>
           <li>Report and block from any connected favor.</li>
-          <li>Cancel a request anytime before completion.</li>
-          <li>Credits move only when the requester confirms completion on the server.</li>
-          <li>You cannot rate the same favor twice.</li>
+          <li>Cancel a request anytime before it is completed.</li>
+          <li>Both people confirm completion. Reviews only come from completed favors.</li>
+          <li>Prohibited: dating, illegal work, handling cash for others, anything that puts someone at risk.</li>
         </ul>
         <Link className="btn btn-primary btn-block" to="/app/discover">
           Back to helping

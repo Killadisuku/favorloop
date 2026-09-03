@@ -8,15 +8,15 @@ import { useApi } from "@/lib/use-api";
 export const Route = createFileRoute("/app/discover")({ component: Discover });
 
 const sorts = [
+  { id: "match", label: "Best match" },
   { id: "newest", label: "Newest" },
   { id: "closest", label: "Closest" },
-  { id: "reward", label: "Highest reward" },
   { id: "quickest", label: "Quickest" },
 ] as const;
 
 function Discover() {
   const [cat, setCat] = useState("All");
-  const [sort, setSort] = useState("newest");
+  const [sort, setSort] = useState("match");
   const [type, setType] = useState<"all" | "request" | "offer">("all");
   const [q, setQ] = useState("");
   const nearby = cat === "Nearby";
@@ -34,7 +34,7 @@ function Discover() {
     <div>
       <div className="page-h">
         <div>
-          <p className="kicker">Nearby loop</p>
+          <p className="kicker">Nearby help</p>
           <h1 className="h1">Discover</h1>
         </div>
         <Link className="chip" to="/app/search">
@@ -77,7 +77,7 @@ function Discover() {
       )}
       {!loading && list.length === 0 && <div className="card empty">No open posts in this filter. Try All, or be the first to post.</div>}
       {list.map((f) => (
-        <FavorCard key={f.id} favor={f} cta="Offer help" />
+        <FavorCard key={f.id} favor={f} cta="I can help" />
       ))}
     </div>
   );

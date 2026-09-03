@@ -35,6 +35,14 @@ function ShellInner({ me }: { me: ProfileMe }) {
               </Link>
             );
           })}
+          <Link to="/app/help" className={`nav-link ${pathname.startsWith("/app/help") ? "active" : ""}`}>
+            <IconCompass size={18} />
+            I can help
+          </Link>
+          <Link to="/app/circles" className={`nav-link ${pathname.startsWith("/app/circles") ? "active" : ""}`}>
+            <IconUser size={18} />
+            Circles
+          </Link>
           <Link to="/app/inbox" className={`nav-link ${pathname.startsWith("/app/inbox") || pathname.startsWith("/app/chat") ? "active" : ""}`}>
             <IconChat size={18} />
             Inbox
