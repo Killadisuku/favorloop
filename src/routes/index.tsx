@@ -1,50 +1,96 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Heart, Search, User } from "lucide-react";
+import { IconShield } from "@/components/icons";
+import { APP_NAME } from "@/lib/constants";
 
 export const Route = createFileRoute("/")({ component: Landing });
 
+const STEPS = [
+  {
+    n: "01",
+    title: "Ask",
+    body: "Post a small request when you need a hand.",
+  },
+  {
+    n: "02",
+    title: "Help",
+    body: "Offer your time or skills to someone who needs help.",
+  },
+  {
+    n: "03",
+    title: "Connect",
+    body: "Meet people through genuine acts of help.",
+  },
+  {
+    n: "04",
+    title: "Build trust",
+    body: "Good experiences create stronger community connections.",
+  },
+] as const;
+
 function Landing() {
   return (
-    <main className="onegai">
-      <div className="onegai-inner">
-        <header className="onegai-brand">
-          <img className="onegai-mark" src="/onegai-mark.png" alt="" width={220} height={132} />
-          <h1 className="onegai-word">Onegai</h1>
-          <p className="onegai-tag">Small favors. Real connections.</p>
-        </header>
+    <main className="home">
+      <header className="home-nav">
+        <Link to="/" className="home-brand" aria-label={APP_NAME}>
+          <img src="/onegai-mark.png" alt="" width={72} height={22} />
+          <span>{APP_NAME}</span>
+        </Link>
+        <Link to="/app" className="home-btn home-btn-primary">
+          Open {APP_NAME}
+        </Link>
+      </header>
 
-        <div className="onegai-grid">
-          <div className="onegai-copy">
-            <h2 className="onegai-headline">
-              Small favors.
-              <br />
-              Real connections.
-            </h2>
-            <p className="onegai-lede">
-              Ask for help, help someone nearby,
-              <br />
-              and build trust in your community.
-            </p>
-            <div className="onegai-pills">
-              <Link className="onegai-pill ask" to="/app/post">
-                <Search size={16} strokeWidth={2.4} />
-                Ask for help
-              </Link>
-              <Link className="onegai-pill help" to="/app/discover">
-                <User size={16} strokeWidth={2.4} />
-                Help someone nearby
-              </Link>
-              <Link className="onegai-pill trust" to="/app">
-                <Heart size={16} strokeWidth={2.4} />
-                Build trust
-              </Link>
-            </div>
-          </div>
-          <div className="onegai-art">
-            <img src="/onegai-scene.png" alt="" width={510} height={570} />
-          </div>
+      <section className="home-hero" aria-label="Onegai artwork">
+        <figure className="home-art">
+          <img
+            src="/onegai-artwork.png"
+            alt="Onegai: Small favors. Real connections. Ask for help, help someone nearby, and build trust in your community."
+            width={1500}
+            height={1000}
+          />
+        </figure>
+        <div className="home-hero-cta">
+          <Link to="/app" className="home-btn home-btn-primary">
+            Get started
+          </Link>
+          <a href="#how" className="home-btn home-btn-ghost">
+            How it works
+          </a>
         </div>
-      </div>
+      </section>
+
+      <section className="home-block" id="how">
+        <p className="home-kicker">How {APP_NAME} works</p>
+        <h2 className="home-title">Ask. Help. Connect. Repeat.</h2>
+        <ol className="home-steps">
+          {STEPS.map((s) => (
+            <li className="home-step" key={s.n}>
+              <span className="home-step-n">{s.n}</span>
+              <strong>{s.title}</strong>
+              <p>{s.body}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="home-block">
+        <div className="home-trust">
+          <IconShield size={22} />
+          <h2 className="home-title">Trust is built through real experiences.</h2>
+          <p>
+            Ratings and reputation should come from completed favors and genuine interactions—not self-awarded
+            claims.
+          </p>
+        </div>
+      </section>
+
+      <section className="home-block home-final">
+        <h2 className="home-title">Small favors can make a big difference.</h2>
+        <p>Give a little. Get a little. Build something better together.</p>
+        <Link to="/app" className="home-btn home-btn-primary">
+          Join {APP_NAME}
+        </Link>
+      </section>
     </main>
   );
 }
