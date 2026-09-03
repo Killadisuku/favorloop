@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Navigate, useRouterState } from "@tanstack/react-router";
+import { APP_NAME } from "@/lib/constants";
 import { getMe } from "@/lib/loop";
 import type { ProfileMe } from "@/lib/types";
 
@@ -38,7 +39,7 @@ export function SessionGate({
     return (
       <div className="auth-wrap">
         <div className="card auth-card">
-          <h1 className="h2">Couldn’t load Onegai</h1>
+          <h1 className="h2">Couldn’t load {APP_NAME}</h1>
           <p className="muted">{err}</p>
         </div>
       </div>

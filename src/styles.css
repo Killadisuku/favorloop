@@ -124,6 +124,12 @@
   place-items: center;
   flex: 0 0 auto;
 }
+.brand-mark-img {
+  width: 48px;
+  height: 28px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
 .brand-name {
   font-weight: 650;
   letter-spacing: -0.03em;

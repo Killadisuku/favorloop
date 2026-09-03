@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Back } from "@/components/back";
 import { relativeTime } from "@/lib/format";
+import { APP_NAME } from "@/lib/constants";
 import { getWallet } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 
@@ -44,7 +45,7 @@ function Wallet() {
         </div>
       </div>
       <p className="tiny" style={{ margin: "12px 0 18px" }}>
-        Favor Credits are not cash. They are community credits used inside Onegai. Transfers happen on the server when a requester confirms completion.
+        Credits are not cash. They are community credits used inside {APP_NAME}. They move when a requester confirms a favor.
       </p>
       {data.pending.length > 0 && (
         <>

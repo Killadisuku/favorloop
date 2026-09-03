@@ -1,9 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Avatar } from "@/components/avatar";
-import { levelFor } from "@/lib/constants";
-import { getMe } from "@/lib/loop";
-import { getProfile } from "@/lib/loop";
+import { APP_NAME, levelFor } from "@/lib/constants";
+import { getMe, getProfile } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 
 export const Route = createFileRoute("/app/profile/")({ component: Profile });
@@ -102,7 +101,7 @@ function Profile() {
       </div>
       <div className="row" style={{ marginTop: 10 }}>
         <Link className="btn btn-ghost" to="/app/plus">
-          Onegai Plus
+          {APP_NAME} Plus
         </Link>
         <Link className="btn btn-ghost" to="/app/challenges">
           Challenges

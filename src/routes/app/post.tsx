@@ -105,7 +105,7 @@ function Post() {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2 className="h2">Ready to post?</h2>
             <p>
-              You are offering <b>{reward} Favor Credits</b>. They stay in your wallet but are reserved so you cannot overspend.
+              You are offering <b>{reward} credits</b>. They stay in your wallet but are reserved so you cannot overspend.
             </p>
             <div className="row">
               <button className="btn btn-ghost" onClick={() => setConfirm(false)}>

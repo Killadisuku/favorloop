@@ -1,7 +1,7 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import type { ProfileMe } from "@/lib/types";
 import { Avatar } from "./avatar";
-import { IconBell, IconChat, IconCompass, IconHome, IconLoop, IconPlus, IconUser, IconWallet } from "./icons";
+import { IconBell, IconChat, IconCompass, IconHome, IconPlus, IconUser, IconWallet } from "./icons";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 import { SessionGate } from "./gate";
 
@@ -19,9 +19,7 @@ function ShellInner({ me }: { me: ProfileMe }) {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <div className="brand-mark">
-            <IconLoop size={18} />
-          </div>
+          <img className="brand-mark-img" src="/onegai-mark.png" alt="" width={48} height={28} />
           <div>
             <div className="brand-name">{APP_NAME}</div>
             <div className="brand-tag">{APP_TAGLINE}</div>

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Back } from "@/components/back";
+import { APP_NAME } from "@/lib/constants";
 import { getMe, joinPlusWaitlist } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 import { toast } from "sonner";
@@ -14,7 +15,7 @@ function Plus() {
     <div>
       <Back to="/app/profile" />
       <p className="kicker">Optional extras</p>
-      <h1 className="h1">Onegai Plus</h1>
+      <h1 className="h1">{APP_NAME} Plus</h1>
       <p className="muted">The core loop stays free. Plus is for people who want more signal.</p>
       <div className="card">
         <p className="tiny">Free</p>

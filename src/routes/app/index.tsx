@@ -3,6 +3,7 @@ import { FavorCard } from "@/components/favor-card";
 import { Avatar } from "@/components/avatar";
 import { IconLoop } from "@/components/icons";
 import { greeting, relativeTime } from "@/lib/format";
+import { APP_NAME } from "@/lib/constants";
 import { getHome } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 
@@ -35,7 +36,7 @@ function Home() {
     <div>
       <div className="page-h">
         <div>
-          <p className="kicker">Onegai · {me.area || me.city || "Nearby"}</p>
+          <p className="kicker">{APP_NAME} · {me.area || me.city || "Nearby"}</p>
           <h1 className="h1">
             {greeting()}, {me.name}
           </h1>

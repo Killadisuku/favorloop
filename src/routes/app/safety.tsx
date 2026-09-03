@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Back } from "@/components/back";
 import { Avatar } from "@/components/avatar";
 import { IconShield } from "@/components/icons";
+import { APP_NAME } from "@/lib/constants";
 import { blockUser, listBlocks } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 import { toast } from "sonner";
@@ -17,7 +18,7 @@ function Safety() {
       <div className="card">
         <IconShield />
         <p>
-          Onegai is for small, ordinary help. Never accept tasks that are dangerous, illegal, medical, financial, or that
+          {APP_NAME} is for small, ordinary help. Never accept tasks that are dangerous, illegal, medical, financial, or that
           ask you to handle someone else's money.
         </p>
         <ul>

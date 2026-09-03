@@ -1,4 +1,4 @@
-import { CATEGORIES, LEVELS, MAX_REWARD, MIN_REWARD, PHOTO_MAX_CHARS, STARTER_CREDITS, TIMES } from "@/lib/constants";
+import { APP_NAME, CATEGORIES, LEVELS, MAX_REWARD, MIN_REWARD, PHOTO_MAX_CHARS, STARTER_CREDITS, TIMES } from "@/lib/constants";
 import type {
   ChallengeRow,
   ConversationRow,
@@ -85,7 +85,8 @@ type DB = {
   plusWaitlist: boolean;
 };
 
-const KEY = "porfavor.loop.v1";
+const KEY = "onegai.loop.v1";
+const LEGACY_KEY = "porfavor.loop.v1";
 
 function ok<T>(data: T): Result<T> {
   return { ok: true, data };
@@ -346,7 +347,7 @@ function seed(): DB {
       {
         id: nid("n"),
         type: "welcome",
-        title: "Welcome to Onegai",
+        title: `Welcome to ${APP_NAME}`,
         body: "You have 3 credits. Help someone, or post a small request.",
         href: "/app/discover",
         read: false,
@@ -371,9 +372,10 @@ let mem: DB | null = null;
 function load(): DB {
   if (mem) return mem;
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(KEY) ?? localStorage.getItem(LEGACY_KEY);
     if (raw) {
       mem = JSON.parse(raw) as DB;
+      save();
       return mem;
     }
   } catch {
@@ -964,7 +966,7 @@ export async function getWallet() {
       return {
         ...t,
         signedAmount: signed,
-        counterparty: otherId ? person(otherId)?.name ?? null : "Onegai",
+        counterparty: otherId ? person(otherId)?.name ?? null : APP_NAME,
       };
     });
   const pending = db.posts
