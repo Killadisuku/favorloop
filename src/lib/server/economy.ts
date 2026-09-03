@@ -188,7 +188,7 @@ export const getWallet = createServerFn({ method: "GET" })
         status: r.status,
         createdAt: String(r.created_at),
         signedAmount: signed,
-        counterparty: otherId ? (nmap.get(otherId) ?? null) : "Por Favor",
+        counterparty: otherId ? (nmap.get(otherId) ?? null) : "Onegai",
       };
     });
     const earned = txs.filter((t) => t.signedAmount > 0 && t.type !== "starter").reduce((s, t) => s + t.signedAmount, 0);

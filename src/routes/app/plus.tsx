@@ -14,7 +14,7 @@ function Plus() {
     <div>
       <Back to="/app/profile" />
       <p className="kicker">Optional extras</p>
-      <h1 className="h1">Por Favor Plus</h1>
+      <h1 className="h1">Onegai Plus</h1>
       <p className="muted">The core loop stays free. Plus is for people who want more signal.</p>
       <div className="card">
         <p className="tiny">Free</p>

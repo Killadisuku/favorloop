@@ -346,7 +346,7 @@ function seed(): DB {
       {
         id: nid("n"),
         type: "welcome",
-        title: "Welcome to Por Favor",
+        title: "Welcome to Onegai",
         body: "You have 3 credits. Help someone, or post a small request.",
         href: "/app/discover",
         read: false,
@@ -964,7 +964,7 @@ export async function getWallet() {
       return {
         ...t,
         signedAmount: signed,
-        counterparty: otherId ? person(otherId)?.name ?? null : "Por Favor",
+        counterparty: otherId ? person(otherId)?.name ?? null : "Onegai",
       };
     });
   const pending = db.posts

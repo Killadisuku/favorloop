@@ -17,7 +17,7 @@ function Safety() {
       <div className="card">
         <IconShield />
         <p>
-          Por Favor is for small, ordinary help. Never accept tasks that are dangerous, illegal, medical, financial, or that
+          Onegai is for small, ordinary help. Never accept tasks that are dangerous, illegal, medical, financial, or that
           ask you to handle someone else's money.
         </p>
         <ul>

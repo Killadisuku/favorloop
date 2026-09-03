@@ -38,7 +38,7 @@ export function SessionGate({
     return (
       <div className="auth-wrap">
         <div className="card auth-card">
-          <h1 className="h2">Couldn’t load Por Favor</h1>
+          <h1 className="h2">Couldn’t load Onegai</h1>
           <p className="muted">{err}</p>
         </div>
       </div>

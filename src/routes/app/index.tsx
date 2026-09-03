@@ -35,7 +35,7 @@ function Home() {
     <div>
       <div className="page-h">
         <div>
-          <p className="kicker">Por Favor · {me.area || me.city || "Nearby"}</p>
+          <p className="kicker">Onegai · {me.area || me.city || "Nearby"}</p>
           <h1 className="h1">
             {greeting()}, {me.name}
           </h1>

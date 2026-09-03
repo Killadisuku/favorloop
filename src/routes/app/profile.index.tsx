@@ -102,7 +102,7 @@ function Profile() {
       </div>
       <div className="row" style={{ marginTop: 10 }}>
         <Link className="btn btn-ghost" to="/app/plus">
-          Por Favor Plus
+          Onegai Plus
         </Link>
         <Link className="btn btn-ghost" to="/app/challenges">
           Challenges

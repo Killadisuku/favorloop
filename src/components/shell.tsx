@@ -2,6 +2,7 @@ import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import type { ProfileMe } from "@/lib/types";
 import { Avatar } from "./avatar";
 import { IconBell, IconChat, IconCompass, IconHome, IconLoop, IconPlus, IconUser, IconWallet } from "./icons";
+import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 import { SessionGate } from "./gate";
 
 const items = [
@@ -22,8 +23,8 @@ function ShellInner({ me }: { me: ProfileMe }) {
             <IconLoop size={18} />
           </div>
           <div>
-            <div className="brand-name">Onegai</div>
-            <div className="brand-tag">Small favors. Real connections.</div>
+            <div className="brand-name">{APP_NAME}</div>
+            <div className="brand-tag">{APP_TAGLINE}</div>
           </div>
         </div>
         <nav>

@@ -71,7 +71,7 @@ function OnboardingForm({ defaultName, defaultUser }: { defaultName: string; def
       });
       if (!res.ok) toast.error(res.error);
       else {
-        toast.success("Welcome to Por Favor.");
+        toast.success("Welcome to Onegai.");
         nav({ to: "/app" });
       }
     } catch (e) {
@@ -85,7 +85,7 @@ function OnboardingForm({ defaultName, defaultUser }: { defaultName: string; def
     <div className="auth-wrap">
       <div className="card auth-card">
         <p className="kicker">Almost there</p>
-        <h1 className="h1">Welcome to Por Favor.</h1>
+        <h1 className="h1">Welcome to Onegai.</h1>
         <p className="muted">You start with 3 promotional starter credits.</p>
         <div className="field" style={{ marginTop: 16 }}>
           <label>Name</label>

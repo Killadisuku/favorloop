@@ -1,4 +1,4 @@
--- Por Favor core schema. user_id is TEXT to match Better Auth ids.
+-- Onegai core schema. user_id is TEXT to match Better Auth ids.
 
 create table if not exists profiles (
   user_id text primary key,

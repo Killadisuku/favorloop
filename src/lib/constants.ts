@@ -1,5 +1,5 @@
-export const APP_NAME = "Por Favor";
-export const APP_TAGLINE = "Your time is currency.";
+export const APP_NAME = "Onegai";
+export const APP_TAGLINE = "Small favors. Real connections.";
 export const STARTER_CREDITS = 3;
 export const MAX_REWARD = 10;
 export const MIN_REWARD = 1;

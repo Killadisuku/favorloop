@@ -1,6 +1,6 @@
-# Por Favor
+# Onegai
 
-Your time is currency. Post a favor, offer help, earn credits.
+Small favors. Real connections. Ask for help, help someone nearby, and build trust.
 
 Live: https://favorloop.vercel.app
 

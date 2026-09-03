@@ -44,7 +44,7 @@ function Wallet() {
         </div>
       </div>
       <p className="tiny" style={{ margin: "12px 0 18px" }}>
-        Favor Credits are not cash. They are community credits used inside Por Favor. Transfers happen on the server when a requester confirms completion.
+        Favor Credits are not cash. They are community credits used inside Onegai. Transfers happen on the server when a requester confirms completion.
       </p>
       {data.pending.length > 0 && (
         <>
