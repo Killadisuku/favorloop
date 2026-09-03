@@ -423,6 +423,7 @@ export const getHome = createServerFn({ method: "GET" })
         lat: fresh.lat == null ? null : num(fresh.lat),
         lng: fresh.lng == null ? null : num(fresh.lng),
         circleIds: [],
+        locationSource: "default",
       },
       openMine: await loadPostCards(mineRows.map((r) => r.id), fresh),
       helping: await loadPostCards(helpRows.map((r) => r.id), fresh),
@@ -457,6 +458,7 @@ export const getHome = createServerFn({ method: "GET" })
         peopleHelpedYou: num(fresh.favors_received),
       },
       circles: [],
+      needsLocation: true,
     };
     return ok(payload);
   });

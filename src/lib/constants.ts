@@ -41,6 +41,52 @@ export const HELP_TYPES = [
 ] as const;
 export type HelpType = (typeof HELP_TYPES)[number]["id"];
 
+export const PRESENCE = [
+  { id: "in_person", label: "In person", hint: "You meet somewhere nearby." },
+  { id: "online", label: "Online", hint: "Help from anywhere — no address needed." },
+  { id: "pickup", label: "Pickup / delivery", hint: "Something is collected or dropped off." },
+  { id: "either", label: "Either", hint: "Online or in person both work." },
+] as const;
+export type Presence = (typeof PRESENCE)[number]["id"];
+
+export const AUDIENCE = [
+  { id: "circle", label: "My Circle" },
+  { id: "nearby", label: "Nearby members" },
+  { id: "both", label: "Both" },
+] as const;
+
+export const AREAS = [
+  { city: "Dubai", name: "Marina", lat: 25.0805, lng: 55.1403 },
+  { city: "Dubai", name: "JLT", lat: 25.0692, lng: 55.1415 },
+  { city: "Dubai", name: "Downtown", lat: 25.1972, lng: 55.2744 },
+  { city: "Dubai", name: "Business Bay", lat: 25.185, lng: 55.263 },
+  { city: "Dubai", name: "Al Barsha", lat: 25.1112, lng: 55.2024 },
+  { city: "Dubai", name: "Deira", lat: 25.2695, lng: 55.3208 },
+  { city: "Dubai", name: "Jumeirah", lat: 25.2084, lng: 55.25 },
+  { city: "Dubai", name: "Al Quoz", lat: 25.136, lng: 55.228 },
+  { city: "Dubai", name: "Airport", lat: 25.2532, lng: 55.3657 },
+  { city: "Dubai", name: "Nearby", lat: 25.2048, lng: 55.2708 },
+] as const;
+
+export function nearestArea(lat: number, lng: number) {
+  let best = AREAS[AREAS.length - 1];
+  let bestD = Infinity;
+  for (const a of AREAS) {
+    const dlat = a.lat - lat;
+    const dlng = a.lng - lng;
+    const d = dlat * dlat + dlng * dlng;
+    if (d < bestD) {
+      bestD = d;
+      best = a;
+    }
+  }
+  return best;
+}
+
+export function areaByName(name: string, city = "Dubai") {
+  return AREAS.find((a) => a.name.toLowerCase() === name.toLowerCase() && a.city === city) ?? AREAS.find((a) => a.name === "Nearby")!;
+}
+
 export const SKILL_OPTS = [
   "Moving",
   "Driving",
@@ -104,6 +150,10 @@ export function hoursFromEstimate(est: string) {
 
 export function helpTypeLabel(id: string) {
   return HELP_TYPES.find((h) => h.id === id)?.label ?? "Favor";
+}
+
+export function presenceLabel(id: string) {
+  return PRESENCE.find((h) => h.id === id)?.label ?? "In person";
 }
 
 export function lifecycleLabel(status: string, pendingOffers = 0) {

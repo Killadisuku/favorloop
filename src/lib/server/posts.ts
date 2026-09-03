@@ -97,6 +97,8 @@ async function hydrate(
           circleNames: [],
         };
     const pending = countMap.get(r.id) ?? 0;
+    const fuzzLat = r.lat == null ? null : Math.round((Number(r.lat) + 0.0035) * 10000) / 10000;
+    const fuzzLng = r.lng == null ? null : Math.round((Number(r.lng) - 0.0028) * 10000) / 10000;
     return {
       id: r.id,
       type: r.type,
@@ -108,6 +110,9 @@ async function hydrate(
       estimatedTime: r.estimated_time,
       creditReward: num(r.credit_reward),
       helpType: "favor",
+      presence: "in_person",
+      destArea: null,
+      audience: "nearby",
       whenNeeded: "Flexible",
       photoUrl: null,
       circleId: null,
@@ -124,6 +129,11 @@ async function hydrate(
       helper: helperRow ? toPublic(helperRow) : null,
       pendingOfferCount: pending,
       myOfferStatus: mine.get(r.id) ?? null,
+      approxLat: fuzzLat,
+      approxLng: fuzzLng,
+      exactShared: false,
+      canSeeExact: false,
+      meetingNote: null,
     };
   });
 }

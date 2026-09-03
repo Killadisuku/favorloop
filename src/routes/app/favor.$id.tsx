@@ -3,10 +3,10 @@ import { useState } from "react";
 import { Avatar } from "@/components/avatar";
 import { Back } from "@/components/back";
 import { IconChat, IconFlag, IconShield } from "@/components/icons";
-import { REVIEW_TAGS, helpTypeLabel } from "@/lib/constants";
-import { formatDistance } from "@/lib/format";
+import { REVIEW_TAGS, helpTypeLabel, presenceLabel } from "@/lib/constants";
+import { formatDistance, formatDuration, formatWalk } from "@/lib/format";
 import { getMe } from "@/lib/loop";
-import { boostPost, cancelPost, getPost, startFavor, toggleBookmark } from "@/lib/loop";
+import { boostPost, cancelPost, getPost, shareMeeting, startFavor, toggleBookmark } from "@/lib/loop";
 import { confirmComplete, requestComplete } from "@/lib/loop";
 import { blockUser, decideOffer, getChatForPost, offerHelp, reportContent, submitReview } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
@@ -29,6 +29,7 @@ function FavorDetail() {
   const [reportOpen, setReportOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const [meeting, setMeeting] = useState("");
 
   if (loading) return <div className="skeleton" style={{ height: 200 }} />;
   if (error || !data) {
@@ -71,9 +72,11 @@ function FavorDetail() {
           <div className="who">
             <b>
               {post.author.name}
-              {post.author.verified ? " ✓" : ""}
+              {post.author.verified ? " · verified" : ""}
             </b>
-            <span className="trust">{post.author.reputation}% Trust</span>
+            <span>
+              {post.author.favorsGiven} favors completed · {post.author.reputation}% reliable
+            </span>
           </div>
           <span className="chip">{post.lifecycle}</span>
         </div>
@@ -83,15 +86,28 @@ function FavorDetail() {
         <p>{post.description}</p>
         {post.photoUrl ? <img src={post.photoUrl} alt="" className="post-photo" /> : null}
         <div className="meta">
-          <span>{post.category}</span>
-          <span>{formatDistance(post.distanceKm)}</span>
+          <span>{formatDistance(post.distanceKm, post.presence)}</span>
+          {formatWalk(post.distanceKm) ? <span>{formatWalk(post.distanceKm)}</span> : null}
           <span>{post.whenNeeded}</span>
-          <span>{post.estimatedTime}</span>
+          <span>{formatDuration(post.estimatedTime)}</span>
+          <span>{post.category}</span>
+          <span>{presenceLabel(post.presence)}</span>
           <span className={`chip htype-${post.helpType}`}>{helpTypeLabel(post.helpType)}</span>
+          {post.presence === "pickup" && post.destArea ? (
+            <span>
+              {post.area} → {post.destArea}
+            </span>
+          ) : post.presence === "online" ? null : (
+            <span>{post.area}, {post.city}</span>
+          )}
           {post.circleName ? <span>{post.circleName}</span> : null}
         </div>
         <p className="tiny" style={{ marginTop: 10 }}>
-          Approximate area only. Exact meeting details stay in chat after you accept.
+          {post.presence === "online"
+            ? "This help happens online. No physical address is shared."
+            : post.canSeeExact && post.meetingNote
+              ? `Meeting point: ${post.meetingNote}`
+              : "Approximate area only. Exact meeting details stay private until the requester shares them."}
         </p>
       </div>
 
@@ -110,7 +126,14 @@ function FavorDetail() {
 
       {post.status === "open" && !mine && (
         <div className="row" style={{ marginTop: 12 }}>
-          <button className="btn btn-primary" disabled={busy || !!post.myOfferStatus} onClick={() => setConfirm(true)}>
+          <button className="btn btn-primary" disabled={busy || !!post.myOfferStatus} onClick={() => {
+            const inPerson = post.presence === "in_person" || post.presence === "pickup";
+            if (inPerson && !window.localStorage.getItem("onegai.safety.inperson")) {
+              setSafety(true);
+              return;
+            }
+            setConfirm(true);
+          }}>
             {post.myOfferStatus ? `Offer ${post.myOfferStatus}` : "I can help"}
           </button>
           <button
@@ -207,6 +230,20 @@ function FavorDetail() {
         </button>
       )}
 
+      {mine && ["accepted", "in_progress"].includes(post.status) && !post.exactShared && (
+        <div className="card" style={{ marginTop: 12 }}>
+          <b>Share a meeting point</b>
+          <p className="tiny">Keep your exact address private until you’re comfortable. A lobby, cafe, or building name is enough.</p>
+          <textarea className="textarea" value={meeting} onChange={(e) => setMeeting(e.target.value)} placeholder="Marina mall south entrance, 6 PM" />
+          <button
+            className="btn btn-primary btn-block"
+            disabled={busy}
+            onClick={() => void run(() => shareMeeting({ data: { postId: post.id, note: meeting } }), "Meeting point shared")}
+          >
+            Share with helper
+          </button>
+        </div>
+      )}
       {involved && (post.status === "accepted" || post.status === "in_progress") && (
         <button
           className="btn btn-soft btn-block"
@@ -340,10 +377,17 @@ function FavorDetail() {
       {safety && (
         <div className="modal-back" onClick={() => setSafety(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2 className="h2">Safety guidelines</h2>
-            <p>Do not accept dangerous, illegal, medical, or financial tasks. Chat stays inside the favor.</p>
-            <button className="btn btn-primary btn-block" onClick={() => setSafety(false)}>
-              Got it
+            <h2 className="h2">Meet in person safely</h2>
+            <p>Keep your exact address private until you’re comfortable sharing it. Prefer a public meeting point. Cancel, report, or block anytime.</p>
+            <button
+              className="btn btn-primary btn-block"
+              onClick={() => {
+                window.localStorage.setItem("onegai.safety.inperson", "1");
+                setSafety(false);
+                if (post.status === "open" && !mine) setConfirm(true);
+              }}
+            >
+              I understand
             </button>
           </div>
         </div>

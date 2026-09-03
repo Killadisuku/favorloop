@@ -9,11 +9,26 @@ export function relativeTime(iso: string) {
   return new Date(iso).toLocaleDateString();
 }
 
-export function formatDistance(km: number | null) {
-  if (km == null) return "Nearby";
+export function formatDistance(km: number | null, presence?: string) {
+  if (presence === "online") return "Online";
+  if (km == null) return "Near your selected area";
   if (km < 0.2) return "Right here";
-  if (km < 1) return `${Math.round(km * 1000)} m`;
-  return `${km.toFixed(1)} km`;
+  if (km < 1) return `${Math.round(km * 1000)} m away`;
+  return `${km.toFixed(1)} km away`;
+}
+
+export function formatWalk(km: number | null) {
+  if (km == null || km < 0.25 || km > 4) return null;
+  const mins = Math.max(5, Math.round((km / 5) * 60 / 5) * 5);
+  return `About ${mins} min away`;
+}
+
+export function formatDuration(est: string) {
+  if (est.startsWith("5")) return "About 10 minutes";
+  if (est.startsWith("15")) return "About 20 minutes";
+  if (est.startsWith("30")) return "About 45 minutes";
+  if (est.startsWith("1")) return "About 90 minutes";
+  return est;
 }
 
 export function greeting() {

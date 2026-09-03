@@ -2,9 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Back } from "@/components/back";
 import { Avatar } from "@/components/avatar";
+import { AREAS, INTEREST_OPTS, NEED_OPTS, SKILL_OPTS } from "@/lib/constants";
 import { compressImage } from "@/lib/format";
-import { INTEREST_OPTS, NEED_OPTS, SKILL_OPTS } from "@/lib/constants";
-import { getMe, updateProfile } from "@/lib/loop";
+import { requestGps } from "@/lib/location";
+import { getMe, getPrefs, setMyLocation, updatePrefs, updateProfile } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 import { toast } from "sonner";
 
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/app/settings")({ component: Settings });
 
 function Settings() {
   const { data: me, reload } = useApi(() => getMe(), []);
+  const { data: prefs, reload: reloadPrefs } = useApi(() => getPrefs(), []);
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
   const [city, setCity] = useState("");
@@ -22,6 +24,7 @@ function Settings() {
   const [interests, setInterests] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [locBusy, setLocBusy] = useState(false);
 
   useEffect(() => {
     if (!me || ready) return;
@@ -77,12 +80,72 @@ function Settings() {
         <textarea className="textarea" value={bio} onChange={(e) => setBio(e.target.value)} />
       </div>
       <div className="field">
-        <label>City</label>
-        <input className="input" value={city} onChange={(e) => setCity(e.target.value)} />
+        <label>Your area</label>
+        <p className="tiny">Used to match nearby favors. Others never see your exact door.</p>
+        <div className="filters">
+          <button
+            type="button"
+            className="chip"
+            disabled={locBusy}
+            onClick={async () => {
+              setLocBusy(true);
+              const res = await requestGps();
+              setLocBusy(false);
+              if ("error" in res) toast.error(res.error);
+              else {
+                await setMyLocation({ data: { ...res, source: "gps" } });
+                setCity(res.city);
+                setArea(res.area);
+                toast.success(`Now matching near ${res.area}.`);
+                void reload();
+              }
+            }}
+          >
+            {locBusy ? "Finding you…" : "Use my location"}
+          </button>
+          {AREAS.filter((a) => a.name !== "Nearby").map((a) => (
+            <button
+              key={a.name}
+              type="button"
+              className={`chip ${area === a.name ? "on" : ""}`}
+              onClick={async () => {
+                setCity(a.city);
+                setArea(a.name);
+                await setMyLocation({ data: { lat: a.lat, lng: a.lng, area: a.name, city: a.city, source: "manual" } });
+                toast.success(`Now matching near ${a.name}.`);
+                void reload();
+              }}
+            >
+              {a.name}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="field">
-        <label>Neighborhood</label>
-        <input className="input" value={area} onChange={(e) => setArea(e.target.value)} />
+        <label>Notifications</label>
+        <p className="tiny">Onegai only pings you about nearby matches and Circles. Never a stream of map alerts.</p>
+        <div className="filters">
+          <button
+            type="button"
+            className={`chip ${prefs?.nearbyNotifs !== false ? "on" : ""}`}
+            onClick={async () => {
+              await updatePrefs({ data: { nearbyNotifs: !(prefs?.nearbyNotifs !== false) } });
+              void reloadPrefs();
+            }}
+          >
+            Nearby matches
+          </button>
+          <button
+            type="button"
+            className={`chip ${prefs?.circleNotifs !== false ? "on" : ""}`}
+            onClick={async () => {
+              await updatePrefs({ data: { circleNotifs: !(prefs?.circleNotifs !== false) } });
+              void reloadPrefs();
+            }}
+          >
+            Circle requests
+          </button>
+        </div>
       </div>
       <div className="field">
         <label>Skills</label>

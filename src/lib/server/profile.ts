@@ -31,6 +31,7 @@ function toMe(row: ProfileRow, reserved: number): ProfileMe {
     lat: row.lat == null ? null : num(row.lat),
     lng: row.lng == null ? null : num(row.lng),
     circleIds: [],
+    locationSource: "default",
   };
 }
 

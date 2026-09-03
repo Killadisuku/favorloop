@@ -1,5 +1,7 @@
 import {
   APP_NAME,
+  areaByName,
+  AUDIENCE,
   CATEGORIES,
   HELP_TYPES,
   hoursFromEstimate,
@@ -9,7 +11,9 @@ import {
   lifecycleLabel,
   MAX_REWARD,
   MIN_REWARD,
+  nearestArea,
   PHOTO_MAX_CHARS,
+  PRESENCE,
   STARTER_CREDITS,
   TIMES,
   WHEN_OPTS,
@@ -40,6 +44,7 @@ type Person = ProfilePublic & {
   lat: number | null;
   lng: number | null;
   circleIds: string[];
+  locationSource: string;
 };
 
 type Post = {
@@ -54,9 +59,18 @@ type Post = {
   estimatedTime: string;
   creditReward: number;
   helpType: string;
+  presence: string;
   whenNeeded: string;
   photoUrl: string | null;
   circleId: string | null;
+  audience: string;
+  lat: number | null;
+  lng: number | null;
+  destLat: number | null;
+  destLng: number | null;
+  destArea: string | null;
+  exactShared: boolean;
+  meetingNote: string | null;
   status: string;
   deadline: string | null;
   boostedUntil: string | null;
@@ -92,6 +106,8 @@ type Tx = {
 type Review = ReviewRow;
 type Challenge = { id: string; title: string; description: string; reward: number; goal: number; kind: string };
 
+type Prefs = { nearbyNotifs: boolean; circleNotifs: boolean };
+
 type DB = {
   selfId: string;
   people: Person[];
@@ -108,6 +124,7 @@ type DB = {
   progress: Record<string, { progress: number; completed: boolean; rewarded: boolean }>;
   plusWaitlist: boolean;
   circles: Circle[];
+  prefs: Prefs;
 };
 
 const KEY = "onegai.loop.v1";
@@ -137,8 +154,9 @@ function levelFrom(given: number): number {
 }
 
 function enrichPerson(
-  p: Omit<Person, "peopleHelped" | "hoursGiven" | "phoneVerified" | "completionRate" | "responseRate" | "circleNames" | "circleIds"> & {
+  p: Omit<Person, "peopleHelped" | "hoursGiven" | "phoneVerified" | "completionRate" | "responseRate" | "circleNames" | "circleIds" | "locationSource"> & {
     circleIds?: string[];
+    locationSource?: string;
   },
 ): Person {
   return {
@@ -151,6 +169,7 @@ function enrichPerson(
     circleNames: [],
     circleIds: p.circleIds ?? [],
     skills: (p.skills ?? []).map((s) => LEGACY_SKILL[s] ?? s),
+    locationSource: p.locationSource ?? "default",
   };
 }
 
@@ -322,7 +341,9 @@ const NEIGHBOR_SEED = [
 const NEIGHBORS: Person[] = NEIGHBOR_SEED.map(enrichPerson);
 
 const SEED_POSTS: Array<
-  Omit<Post, "createdAt" | "helpType" | "whenNeeded" | "photoUrl" | "circleId"> & { hoursAgo: number }
+  Omit<Post, "createdAt" | "helpType" | "whenNeeded" | "photoUrl" | "circleId" | "presence" | "audience" | "lat" | "lng" | "destLat" | "destLng" | "destArea" | "exactShared" | "meetingNote"> & {
+    hoursAgo: number;
+  }
 > = [
   { id: "p_wifi", userId: "nb_lina", type: "request", title: "Help me set up a mesh Wi-Fi", description: "New apartment, two floors, the office room gets one bar. Need someone who has done this before.", category: "Tech", city: "Dubai", area: "Downtown", estimatedTime: "30–60 min", creditReward: 3, status: "open", deadline: null, boostedUntil: null, helperId: null, hoursAgo: 2 },
   { id: "p_ikea", userId: "nb_maya", type: "request", title: "Build a Billy bookcase", description: "It’s still in the box. Tools are here, patience is not.", category: "Home", city: "Dubai", area: "Marina", estimatedTime: "1–2 hours", creditReward: 4, status: "open", deadline: null, boostedUntil: null, helperId: null, hoursAgo: 5 },
@@ -369,15 +390,29 @@ function seed(): DB {
   const self = makeSelf();
   const circles: Circle[] = defaultCircles(self.userId);
   self.circleIds = ["c_marina", "c_friends"];
-  const posts: Post[] = SEED_POSTS.map((p) => ({
-    helpType: p.category === "Transport" ? "paid" : p.category === "Home" ? "kindness" : "favor",
-    whenNeeded: p.id === "p_airport" ? "Tomorrow" : "Flexible",
-    photoUrl: null,
-    circleId: p.userId === "nb_maya" ? "c_marina" : null,
-    ...p,
-    category: LEGACY_CATEGORY[p.category] ?? p.category,
-    createdAt: new Date(Date.now() - p.hoursAgo * 3600_000).toISOString(),
-  }));
+  const posts: Post[] = SEED_POSTS.map((p) => {
+    const loc = locOf(p.area);
+    const presence = inferPresence(p);
+    const dest = p.id === "p_airport" ? locOf("Airport") : p.id === "p_shop" ? locOf("Marina") : null;
+    return {
+      helpType: p.category === "Transport" ? "paid" : p.category === "Home" || p.id === "p_table" ? "kindness" : "favor",
+      whenNeeded: p.id === "p_airport" ? "Tomorrow" : p.id === "p_table" ? "Today · evening" : "Flexible",
+      photoUrl: null,
+      circleId: p.userId === "nb_maya" ? "c_marina" : null,
+      audience: p.userId === "nb_maya" ? "both" : "nearby",
+      presence,
+      lat: presence === "online" ? null : loc.lat,
+      lng: presence === "online" ? null : loc.lng,
+      destLat: dest?.lat ?? null,
+      destLng: dest?.lng ?? null,
+      destArea: dest && presence === "pickup" ? dest.area : null,
+      exactShared: false,
+      meetingNote: null,
+      ...p,
+      category: LEGACY_CATEGORY[p.category] ?? p.category,
+      createdAt: new Date(Date.now() - p.hoursAgo * 3600_000).toISOString(),
+    };
+  });
   const people = [self, ...NEIGHBORS].map((p) => {
     p.circleIds = circles.filter((c) => c.memberIds.includes(p.userId)).map((c) => c.id);
     return p;
@@ -433,6 +468,7 @@ function seed(): DB {
     progress: {},
     plusWaitlist: false,
     circles,
+    prefs: { nearbyNotifs: true, circleNotifs: true },
   };
 }
 
@@ -466,6 +502,10 @@ function defaultCircles(selfId: string): Circle[] {
 
 function migrate(db: DB): DB {
   if (!db.circles || db.circles.length === 0) db.circles = defaultCircles(db.selfId);
+  db.prefs = {
+    nearbyNotifs: db.prefs?.nearbyNotifs ?? true,
+    circleNotifs: db.prefs?.circleNotifs ?? true,
+  };
   db.people = (db.people ?? []).map((p) => {
     const skills = (p.skills ?? []).map((s) => LEGACY_SKILL[s] ?? s);
     const circleIds = p.circleIds ?? db.circles.filter((c) => c.memberIds.includes(p.userId)).map((c) => c.id);
@@ -475,14 +515,27 @@ function migrate(db: DB): DB {
       circleIds,
     });
   });
-  db.posts = (db.posts ?? []).map((p) => ({
-    ...p,
-    category: LEGACY_CATEGORY[p.category] ?? p.category,
-    helpType: p.helpType ?? (p.creditReward === 0 ? "kindness" : "favor"),
-    whenNeeded: p.whenNeeded ?? "Flexible",
-    photoUrl: p.photoUrl ?? null,
-    circleId: p.circleId ?? null,
-  }));
+  db.posts = (db.posts ?? []).map((p) => {
+    const loc = locOf(p.area || "Nearby");
+    const presence = p.presence ?? inferPresence(p);
+    return {
+      ...p,
+      category: LEGACY_CATEGORY[p.category] ?? p.category,
+      helpType: p.helpType ?? (p.creditReward === 0 ? "kindness" : "favor"),
+      whenNeeded: p.whenNeeded ?? "Flexible",
+      photoUrl: p.photoUrl ?? null,
+      circleId: p.circleId ?? null,
+      presence,
+      audience: p.audience ?? (p.circleId ? "circle" : "nearby"),
+      lat: p.lat ?? (presence === "online" ? null : loc.lat),
+      lng: p.lng ?? (presence === "online" ? null : loc.lng),
+      destLat: p.destLat ?? null,
+      destLng: p.destLng ?? null,
+      destArea: p.destArea ?? null,
+      exactShared: Boolean(p.exactShared),
+      meetingNote: p.meetingNote ?? null,
+    };
+  });
   return db;
 }
 
@@ -564,11 +617,34 @@ function toMe(p: Person): ProfileMe {
     lat: p.lat,
     lng: p.lng,
     circleIds: p.circleIds ?? [],
+    locationSource: p.locationSource ?? "default",
   };
 }
 function notify(userId: string, title: string, body: string, href: string, type = "note") {
   if (userId !== load().selfId) return;
   load().notifs.unshift({ id: nid("n"), type, title, body, href, read: false, createdAt: now() });
+}
+
+function inferPresence(p: { category: string; title: string; id?: string }) {
+  const t = p.title.toLowerCase();
+  if (t.includes("excel") || t.includes("english") || t.includes("flyer") || t.includes("canva")) return t.includes("english") ? "either" : "online";
+  if (t.includes("airport") || t.includes("carrefour") || t.includes("lift")) return "pickup";
+  return "in_person";
+}
+
+function locOf(name: string) {
+  const a = areaByName(name);
+  return { lat: a.lat, lng: a.lng, city: a.city, area: a.name };
+}
+
+function fuzz(lat: number, lng: number, id: string) {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+  const ang = ((h >>> 0) % 360) * (Math.PI / 180);
+  const dist = 0.32 + ((h >>> 8) % 28) / 100;
+  const dlat = (dist / 111) * Math.cos(ang);
+  const dlng = (dist / (111 * Math.cos((lat * Math.PI) / 180) || 1)) * Math.sin(ang);
+  return { lat: Math.round((lat + dlat) * 10000) / 10000, lng: Math.round((lng + dlng) * 10000) / 10000 };
 }
 
 function haversine(a: { lat: number | null; lng: number | null }, b: { lat: number | null; lng: number | null }) {
@@ -600,21 +676,30 @@ function skillHit(skills: string[], category: string) {
 
 function matchScore(post: Post, me: Person, km: number | null) {
   let s = 0;
-  if (km == null) s += 8;
-  else if (km < 1) s += 40;
-  else if (km < 3) s += 25;
+  const online = post.presence === "online";
+  if (online) s += 18;
+  else if (km == null) s += 8;
+  else if (km < 1) s += 36;
+  else if (km < 3) s += 24;
   else if (km < 8) s += 12;
-  else s += 4;
-  if (skillHit(me.skills, post.category)) s += 32;
+  else s += 3;
+  if (skillHit(me.skills, post.category)) s += 34;
   const author = person(post.userId);
   if (author) s += Math.round(author.reputation / 8);
+  s += Math.round((me.responseRate || 80) / 20);
   if (post.circleId && me.circleIds.includes(post.circleId)) s += 22;
+  const similar = load().posts.filter((x) => x.status === "completed" && x.helperId === me.userId && x.category === post.category).length;
+  s += Math.min(12, similar * 4);
   const together = load().posts.some(
     (x) => x.status === "completed" && ((x.userId === me.userId && x.helperId === post.userId) || (x.helperId === me.userId && x.userId === post.userId)),
   );
   if (together) s += 16;
+  const busy = load().posts.filter((x) => x.helperId === me.userId && ["accepted", "in_progress"].includes(x.status)).length;
+  if (busy === 0) s += 10;
+  else if (busy >= 2) s -= 8;
   if (post.boostedUntil && new Date(post.boostedUntil) > new Date()) s += 8;
-  if (post.whenNeeded?.startsWith("Today")) s += 6;
+  if (post.whenNeeded?.startsWith("Today")) s += 8;
+  if (post.audience === "circle" && post.circleId && me.circleIds.includes(post.circleId)) s += 8;
   return s;
 }
 
@@ -625,8 +710,13 @@ function card(post: Post): PostCard {
   const me = self();
   const pending = db.offers.filter((o) => o.postId === post.id && o.status === "pending").length;
   const mine = db.offers.find((o) => o.postId === post.id && o.helperId === db.selfId);
-  const km = haversine(me, author);
+  const point = { lat: post.lat ?? author.lat, lng: post.lng ?? author.lng };
+  const km = post.presence === "online" ? null : haversine(me, point);
   const circle = post.circleId ? db.circles.find((c) => c.id === post.circleId) : null;
+  const involved = me.userId === post.userId || me.userId === post.helperId;
+  const accepted = ["accepted", "in_progress", "pending_confirm", "completed"].includes(post.status);
+  const canSeeExact = involved && (me.userId === post.userId || (accepted && post.exactShared));
+  const approx = point.lat != null && point.lng != null ? fuzz(point.lat, point.lng, post.id) : null;
   return {
     id: post.id,
     type: post.type,
@@ -635,13 +725,16 @@ function card(post: Post): PostCard {
     category: post.category,
     city: post.city,
     area: post.area,
+    destArea: post.destArea ?? null,
     estimatedTime: post.estimatedTime,
     creditReward: post.creditReward,
     helpType: post.helpType ?? "favor",
+    presence: post.presence ?? "in_person",
     whenNeeded: post.whenNeeded ?? "Flexible",
     photoUrl: post.photoUrl ?? null,
     circleId: post.circleId ?? null,
     circleName: circle?.name ?? null,
+    audience: post.audience ?? "nearby",
     status: post.status,
     lifecycle: lifecycleLabel(post.status, pending),
     deadline: post.deadline,
@@ -654,6 +747,11 @@ function card(post: Post): PostCard {
     helper: helper ? toPublic(helper) : null,
     pendingOfferCount: pending,
     myOfferStatus: mine?.status ?? null,
+    approxLat: post.presence === "online" ? null : (approx?.lat ?? null),
+    approxLng: post.presence === "online" ? null : (approx?.lng ?? null),
+    exactShared: Boolean(post.exactShared),
+    canSeeExact,
+    meetingNote: canSeeExact ? post.meetingNote : null,
   };
 }
 
@@ -720,6 +818,12 @@ export async function updateProfile(raw: DataArg<{ name: string; bio: string; ci
   me.bio = data.bio ?? "";
   me.city = data.city || me.city;
   me.area = data.area ?? me.area;
+  if (data.area) {
+    const loc = locOf(data.area);
+    me.lat = loc.lat;
+    me.lng = loc.lng;
+    me.locationSource = "manual";
+  }
   me.photoUrl = data.photoUrl ?? me.photoUrl;
   if (data.avatarHue != null) me.avatarHue = data.avatarHue;
   if (data.skills) me.skills = data.skills;
@@ -779,6 +883,13 @@ export async function createPost(
     whenNeeded?: string;
     photoUrl?: string | null;
     circleId?: string | null;
+    presence?: string;
+    audience?: string;
+    lat?: number | null;
+    lng?: number | null;
+    destLat?: number | null;
+    destLng?: number | null;
+    destArea?: string | null;
   }>,
 ) {
   const data = arg(raw, {} as never);
@@ -788,6 +899,7 @@ export async function createPost(
   if (!CATEGORIES.includes(category as (typeof CATEGORIES)[number])) return fail("Pick a valid category.");
   if (!TIMES.includes(data.estimatedTime as (typeof TIMES)[number])) return fail("Pick a time estimate.");
   const helpType = HELP_TYPES.some((h) => h.id === data.helpType) ? data.helpType! : "favor";
+  const presence = PRESENCE.some((h) => h.id === data.presence) ? data.presence! : "in_person";
   const whenNeeded = (WHEN_OPTS as readonly string[]).includes(data.whenNeeded ?? "") ? data.whenNeeded! : "Flexible";
   const reward =
     helpType === "kindness" ? 0 : Math.min(MAX_REWARD, Math.max(helpType === "favor" ? 1 : MIN_REWARD, Math.round(data.creditReward || 2)));
@@ -795,7 +907,25 @@ export async function createPost(
     return fail(`You need ${reward} available favors in exchange. You have ${toMe(me).available} free.`);
   }
   if (data.photoUrl && data.photoUrl.length > PHOTO_MAX_CHARS) return fail("Photo is too large.");
-  const circleId = data.circleId && me.circleIds.includes(data.circleId) ? data.circleId : null;
+  const audience = AUDIENCE.some((a) => a.id === data.audience) ? data.audience! : "nearby";
+  const circleId = data.circleId && me.circleIds.includes(data.circleId) ? data.circleId : audience === "circle" ? (me.circleIds[0] ?? null) : null;
+  if (audience === "circle" && !circleId) return fail("Join a Circle before asking only that Circle.");
+  const needsPlace = presence === "in_person" || presence === "pickup";
+  let lat = presence === "online" ? null : (data.lat ?? me.lat);
+  let lng = presence === "online" ? null : (data.lng ?? me.lng);
+  let area = data.lat != null ? nearestArea(data.lat, data.lng ?? 0).name : me.area;
+  let city = data.lat != null ? nearestArea(data.lat, data.lng ?? 0).city : me.city;
+  if (needsPlace && (lat == null || lng == null)) {
+    const fallback = locOf(me.area || "Nearby");
+    lat = fallback.lat;
+    lng = fallback.lng;
+    area = fallback.area;
+    city = fallback.city;
+  }
+  if (presence === "pickup" && data.destLat == null && !data.destArea) {
+    return fail("Add a pickup or drop-off area.");
+  }
+  const dest = data.destArea ? locOf(data.destArea) : data.destLat != null && data.destLng != null ? { lat: data.destLat, lng: data.destLng, area: nearestArea(data.destLat, data.destLng).name } : null;
   const post: Post = {
     id: nid("p"),
     userId: me.userId,
@@ -803,14 +933,23 @@ export async function createPost(
     title: data.title.slice(0, 140),
     description: data.description ?? "",
     category,
-    city: me.city,
-    area: me.area,
+    city,
+    area,
     estimatedTime: data.estimatedTime,
     creditReward: reward,
     helpType,
+    presence,
     whenNeeded,
     photoUrl: data.photoUrl ?? null,
     circleId,
+    audience,
+    lat,
+    lng,
+    destLat: dest?.lat ?? null,
+    destLng: dest?.lng ?? null,
+    destArea: dest?.area ?? null,
+    exactShared: false,
+    meetingNote: null,
     status: "open",
     deadline: data.deadline,
     boostedUntil: null,
@@ -821,8 +960,12 @@ export async function createPost(
   db.posts.unshift(post);
   if (data.type === "request") {
     const helper =
-      NEIGHBORS.filter((n) => !circleId || n.circleIds.includes(circleId))
-        .sort((a, b) => Number(skillHit(b.skills, category)) - Number(skillHit(a.skills, category)))[0] ?? NEIGHBORS[0];
+      NEIGHBORS.filter((n) => !(audience === "circle" && circleId) || n.circleIds.includes(circleId!))
+        .sort((a, b) => {
+          const skill = Number(skillHit(b.skills, category)) - Number(skillHit(a.skills, category));
+          if (skill) return skill;
+          return (haversine(post, a) ?? 99) - (haversine(post, b) ?? 99);
+        })[0] ?? NEIGHBORS[0];
     db.offers.unshift({
       id: nid("o"),
       postId: post.id,
@@ -851,8 +994,10 @@ export async function listDiscover(raw?: DataArg<{ q?: string; category?: string
   const me = self();
   let cards = db.posts
     .filter((p) => p.status === "open" && p.userId !== db.selfId && !db.blocks.includes(p.userId))
-    .filter((p) => !p.circleId || me.circleIds.includes(p.circleId) || p.userId === me.userId)
-    .map(card);
+    .filter((p) => p.audience !== "circle" || !p.circleId || me.circleIds.includes(p.circleId))
+    .map(card)
+    .filter((c) => c.presence === "online" || c.distanceKm == null || c.distanceKm < 28);
+  if (data.nearby) cards = cards.filter((c) => c.distanceKm != null && c.distanceKm < 8);
   if (data.type === "offer" || data.type === "request") cards = cards.filter((c) => c.type === data.type);
   if (data.category && data.category !== "All" && data.category !== "Nearby") cards = cards.filter((c) => c.category === data.category);
   if (data.circleId) cards = cards.filter((c) => c.circleId === data.circleId);
@@ -1319,8 +1464,9 @@ export async function getHome() {
   const helping = db.posts.filter((p) => p.helperId === me.userId && ["accepted", "in_progress", "pending_confirm"].includes(p.status)).map(card);
   const open = db.posts
     .filter((p) => p.status === "open" && p.userId !== me.userId && p.type === "request" && !db.blocks.includes(p.userId))
-    .filter((p) => !p.circleId || me.circleIds.includes(p.circleId))
+    .filter((p) => p.audience !== "circle" || !p.circleId || me.circleIds.includes(p.circleId))
     .map(card)
+    .filter((c) => c.presence === "online" || c.distanceKm == null || c.distanceKm < 28)
     .sort((a, b) => b.matchScore - a.matchScore);
   const skillMatches = open.filter((c) => skillHit(self().skills, c.category)).slice(0, 6);
   const people = db.people.filter((p) => p.userId !== me.userId).slice(0, 6).map(toPublic);
@@ -1350,8 +1496,80 @@ export async function getHome() {
       memberCount: c.memberIds.length,
       joined: c.memberIds.includes(me.userId),
     })),
+    needsLocation: me.locationSource === "default",
   };
   return ok(payload);
+}
+
+export async function setMyLocation(raw: DataArg<{ lat: number; lng: number; area?: string; city?: string; source: string }>) {
+  const data = arg(raw, { lat: 0, lng: 0, source: "manual" });
+  const me = self();
+  if (!Number.isFinite(data.lat) || !Number.isFinite(data.lng)) return fail("That location is not valid.");
+  const area = nearestArea(data.lat, data.lng);
+  const prevArea = me.area;
+  me.lat = data.lat;
+  me.lng = data.lng;
+  me.area = data.area || area.name;
+  me.city = data.city || area.city;
+  me.locationSource = data.source || "manual";
+  const db = load();
+  const prefs = db.prefs ?? { nearbyNotifs: true, circleNotifs: true };
+  const nearby = db.posts
+    .filter((p) => p.status === "open" && p.userId !== me.userId && p.type === "request")
+    .map(card)
+    .filter((c) => c.presence === "online" || (c.distanceKm != null && c.distanceKm < 8));
+  const skillN = nearby.filter((c) => skillHit(me.skills, c.category)).length;
+  const circleN = nearby.filter((c) => c.circleId && me.circleIds.includes(c.circleId)).length;
+  const moved = prevArea !== me.area || data.source === "gps";
+  const already = db.notifs.some((n) => n.type === "nearby_match" && Date.now() - +new Date(n.createdAt) < 36e5);
+  if (moved && prefs.nearbyNotifs && skillN > 0 && !already) {
+    notify(
+      me.userId,
+      skillN === 1 ? "Someone nearby needs your skills" : `${skillN} favors near you match your skills`,
+      me.area ? `Around ${me.area}. Approximate areas only.` : "Matched by skill, distance, and reliability.",
+      "/app",
+      "nearby_match",
+    );
+  }
+  if (moved && prefs.circleNotifs && circleN > 0 && !db.notifs.some((n) => n.type === "circle_match" && Date.now() - +new Date(n.createdAt) < 36e5)) {
+    notify(me.userId, "Your Circle has a new request", "People you already trust asked for a hand nearby.", "/app/circles", "circle_match");
+  }
+  save();
+  return ok(toMe(me));
+}
+
+export async function getPrefs() {
+  const db = load();
+  return ok(db.prefs ?? { nearbyNotifs: true, circleNotifs: true });
+}
+
+export async function updatePrefs(raw: DataArg<{ nearbyNotifs?: boolean; circleNotifs?: boolean }>) {
+  const data = arg(raw, {});
+  const db = load();
+  db.prefs = {
+    nearbyNotifs: data.nearbyNotifs ?? db.prefs?.nearbyNotifs ?? true,
+    circleNotifs: data.circleNotifs ?? db.prefs?.circleNotifs ?? true,
+  };
+  save();
+  return ok(db.prefs);
+}
+
+export async function shareMeeting(raw: DataArg<{ postId: string; note: string }>) {
+  const { postId, note } = arg(raw, { postId: "", note: "" });
+  const db = load();
+  const post = db.posts.find((p) => p.id === postId);
+  if (!post) return fail("Request not found.");
+  if (post.userId !== db.selfId) return fail("Only the requester can share a meeting point.");
+  if (!["accepted", "in_progress", "pending_confirm"].includes(post.status)) return fail("Share a meeting point after someone is accepted.");
+  const text = note.trim().slice(0, 280);
+  if (text.length < 4) return fail("Add a meeting point, without private details you are not ready to share.");
+  post.exactShared = true;
+  post.meetingNote = text;
+  if (post.helperId) {
+    notify(post.helperId, "A meeting point was shared", `For “${post.title}”. Keep it between you two.`, `/app/favor/${post.id}`, "meeting");
+  }
+  save();
+  return ok(card(post));
 }
 
 export async function listCircles() {

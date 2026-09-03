@@ -38,6 +38,7 @@ export type ProfileMe = ProfilePublic & {
   lat: number | null;
   lng: number | null;
   circleIds: string[];
+  locationSource: string;
 };
 
 export type PostCard = {
@@ -48,13 +49,16 @@ export type PostCard = {
   category: string;
   city: string;
   area: string;
+  destArea: string | null;
   estimatedTime: string;
   creditReward: number;
   helpType: string;
+  presence: string;
   whenNeeded: string;
   photoUrl: string | null;
   circleId: string | null;
   circleName: string | null;
+  audience: string;
   status: string;
   lifecycle: string;
   deadline: string | null;
@@ -67,6 +71,11 @@ export type PostCard = {
   helper: ProfilePublic | null;
   pendingOfferCount: number;
   myOfferStatus: string | null;
+  approxLat: number | null;
+  approxLng: number | null;
+  exactShared: boolean;
+  canSeeExact: boolean;
+  meetingNote: string | null;
 };
 
 export type OfferRow = {
@@ -173,4 +182,5 @@ export type HomePayload = {
   challenges: ChallengeRow[];
   impact: Impact;
   circles: CircleRow[];
+  needsLocation: boolean;
 };

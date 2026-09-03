@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { CATEGORIES, HELP_TYPES, TIMES, WHEN_OPTS } from "@/lib/constants";
+import { PlacePicker, type PlaceValue } from "@/components/place-picker";
+import { AUDIENCE, CATEGORIES, HELP_TYPES, PRESENCE, TIMES, WHEN_OPTS } from "@/lib/constants";
 import { compressImage } from "@/lib/format";
 import { createPost, getMe, listCircles } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
@@ -18,14 +19,30 @@ function Post() {
   const [timeEstimate, setTime] = useState<(typeof TIMES)[number]>("15–30 min");
   const [whenNeeded, setWhen] = useState<(typeof WHEN_OPTS)[number]>("Flexible");
   const [helpType, setHelpType] = useState<(typeof HELP_TYPES)[number]["id"]>("kindness");
+  const [presence, setPresence] = useState<(typeof PRESENCE)[number]["id"]>("in_person");
   const [reward, setReward] = useState(2);
   const [deadline, setDeadline] = useState("");
   const [photoUrl, setPhoto] = useState<string | null>(null);
   const [circleId, setCircle] = useState<string>("");
+  const [audience, setAudience] = useState<(typeof AUDIENCE)[number]["id"]>("nearby");
+  const [place, setPlace] = useState<PlaceValue | null>(null);
+  const [destArea, setDest] = useState("");
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  const needPlace = presence === "in_person" || presence === "pickup";
+  const optionalPlace = presence === "either";
+  const joined = (circles ?? []).filter((c) => c.joined);
+
   const publish = async () => {
+    if (presence === "pickup" && !destArea) {
+      toast.error("Add a drop-off area.");
+      return;
+    }
+    if (needPlace && !place && me?.lat == null) {
+      toast.error("Add an approximate area so neighbors can find you.");
+      return;
+    }
     setBusy(true);
     try {
       const res = await createPost({
@@ -41,6 +58,11 @@ function Post() {
           whenNeeded,
           photoUrl,
           circleId: circleId || null,
+          presence,
+          audience,
+          lat: place?.lat ?? (presence === "online" ? null : me?.lat ?? null),
+          lng: place?.lng ?? (presence === "online" ? null : me?.lng ?? null),
+          destArea: destArea || null,
         },
       });
       if (!res.ok) {
@@ -57,15 +79,25 @@ function Post() {
     }
   };
 
-  const joined = (circles ?? []).filter((c) => c.joined);
-
   return (
     <div>
       <p className="kicker">Ask for help</p>
-      <h1 className="h1">What do you need?</h1>
+      <h1 className="h1">What do you need help with?</h1>
       <p className="tiny">Keep it small and specific — like moving a table or grabbing something nearby.</p>
 
       <div className="field" style={{ marginTop: 16 }}>
+        <label>What kind of help is this?</label>
+        <div className="help-types">
+          {PRESENCE.map((h) => (
+            <button key={h.id} type="button" className={`help-type ${presence === h.id ? "on" : ""}`} onClick={() => setPresence(h.id)}>
+              <b>{h.label}</b>
+              <span>{h.hint}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="field">
         <label>What do you need?</label>
         <input
           className="input"
@@ -85,7 +117,7 @@ function Post() {
         </div>
       </div>
       <div className="field">
-        <label>When?</label>
+        <label>When do you need it?</label>
         <div className="filters">
           {WHEN_OPTS.map((t) => (
             <button key={t} type="button" className={`chip ${whenNeeded === t ? "on" : ""}`} onClick={() => setWhen(t)}>
@@ -95,9 +127,16 @@ function Post() {
         </div>
       </div>
       <div className="field">
-        <label>Approximate location</label>
-        <input className="input" value={`${me?.area || "Nearby"}${me?.city ? `, ${me.city}` : ""}`} readOnly />
-        <div className="tiny">Exact address stays private until someone is accepted.</div>
+        <label>Where?</label>
+        <PlacePicker
+          value={place}
+          onChange={setPlace}
+          dest={destArea}
+          onDest={setDest}
+          needPlace={needPlace}
+          needDest={presence === "pickup"}
+          optional={optionalPlace}
+        />
       </div>
       <div className="field">
         <label>Estimated time</label>
@@ -110,7 +149,7 @@ function Post() {
         </div>
       </div>
       <div className="field">
-        <label>Help type</label>
+        <label>Thanks type</label>
         <div className="help-types">
           {HELP_TYPES.map((h) => (
             <button key={h.id} type="button" className={`help-type ${helpType === h.id ? "on" : ""}`} onClick={() => setHelpType(h.id)}>
@@ -124,11 +163,6 @@ function Post() {
         <div className="field">
           <label>{helpType === "paid" ? `Paid thanks · ${reward}` : `Favor exchange · ${reward}`}</label>
           <input className="range" type="range" min={1} max={helpType === "favor" ? 3 : 10} value={reward} onChange={(e) => setReward(Number(e.target.value))} />
-          <div className="tiny">
-            {helpType === "paid"
-              ? "Use this only when a paid thanks feels right. It is not a job board."
-              : "A small exchange so help can flow both ways. Not money."}
-          </div>
         </div>
       )}
       <div className="field">
@@ -153,21 +187,25 @@ function Post() {
         />
         {photoUrl ? <img src={photoUrl} alt="" className="post-photo" /> : null}
       </div>
-      {joined.length > 0 && (
-        <div className="field">
-          <label>Who should see this?</label>
-          <div className="filters">
-            <button type="button" className={`chip ${circleId === "" ? "on" : ""}`} onClick={() => setCircle("")}>
-              Nearby community
+      <div className="field">
+        <label>Who should see this?</label>
+        <div className="filters">
+          {AUDIENCE.map((a) => (
+            <button key={a.id} type="button" className={`chip ${audience === a.id ? "on" : ""}`} onClick={() => setAudience(a.id)}>
+              {a.label}
             </button>
+          ))}
+        </div>
+        {(audience === "circle" || audience === "both") && joined.length > 0 && (
+          <div className="filters" style={{ marginTop: 8 }}>
             {joined.map((c) => (
               <button key={c.id} type="button" className={`chip ${circleId === c.id ? "on" : ""}`} onClick={() => setCircle(c.id)}>
-                Ask {c.name}
+                {c.name}
               </button>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
       <button className="btn btn-primary btn-block" onClick={() => setConfirm(true)} disabled={!title.trim()}>
         Post request
       </button>
@@ -176,7 +214,9 @@ function Post() {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2 className="h2">Ready to ask?</h2>
             <p>
-              Neighbors will see an approximate area, not your exact address. You choose who to accept.
+              {presence === "online"
+                ? "This stays online — no physical location is shared."
+                : "Neighbors will see an approximate area, not your exact address. You choose who to accept."}
             </p>
             <div className="row">
               <button className="btn btn-ghost" onClick={() => setConfirm(false)}>
