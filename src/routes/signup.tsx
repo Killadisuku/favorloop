@@ -1,24 +1,30 @@
 import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { GoogleG } from "@/components/google-g";
-import { friendlyAuthError, validateEmail, validatePassword } from "@/lib/auth-errors";
+import { friendlyAuthError, googleCallbackError, validateEmail, validatePassword } from "@/lib/auth-errors";
 import { authClient } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 import { signInWithGoogle } from "@/lib/google-oauth";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/signup")({ component: Signup });
+export const Route = createFileRoute("/signup")({
+  validateSearch: (s: Record<string, unknown>): { error?: string } => ({
+    ...(typeof s.error === "string" && s.error ? { error: s.error } : {}),
+  }),
+  component: Signup,
+});
 
 function Signup() {
   const nav = useNavigate();
+  const search = Route.useSearch();
   const { user, isPending } = useCurrentUserState();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState<"google" | "email" | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(googleCallbackError(search.error));
 
   if (isPending) {
     return (
@@ -33,7 +39,7 @@ function Signup() {
     setError(null);
     setBusy("google");
     try {
-      await signInWithGoogle({ callbackURL: "/app", errorCallbackURL: "/login?error=google" });
+      await signInWithGoogle({ callbackURL: "/app", errorCallbackURL: "/signup?error=google" });
     } catch (e) {
       setError(friendlyAuthError(e));
       setBusy(null);

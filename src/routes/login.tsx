@@ -1,7 +1,7 @@
 import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { GoogleG } from "@/components/google-g";
-import { friendlyAuthError, validateEmail } from "@/lib/auth-errors";
+import { friendlyAuthError, googleCallbackError, validateEmail } from "@/lib/auth-errors";
 import { authClient, authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
@@ -16,14 +16,6 @@ export const Route = createFileRoute("/login")({
   component: Login,
 });
 
-function initialError(error?: string): string | null {
-  if (!error) return null;
-  if (error === "google" || error === "access_denied" || error === "signin_cancelled") {
-    return "Google sign-in didn’t finish. You can try again, or continue with email.";
-  }
-  return friendlyAuthError(error);
-}
-
 function Login() {
   const nav = useNavigate();
   const search = Route.useSearch();
@@ -32,7 +24,7 @@ function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState<"google" | "email" | null>(null);
-  const [error, setError] = useState<string | null>(initialError(search.error));
+  const [error, setError] = useState<string | null>(googleCallbackError(search.error));
 
   if (isPending) {
     return (

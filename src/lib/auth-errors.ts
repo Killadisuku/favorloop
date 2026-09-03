@@ -1,5 +1,13 @@
 /** User-facing auth copy. Never surface secrets, tokens, or stack traces. */
 
+export function googleCallbackError(error?: string): string | null {
+  if (!error) return null;
+  if (error === "google" || error === "access_denied" || error === "signin_cancelled") {
+    return "Google sign-in didn’t finish. You can try again, or continue with email.";
+  }
+  return friendlyAuthError(error);
+}
+
 export function friendlyAuthError(err: unknown): string {
   const raw =
     err instanceof Error
@@ -11,8 +19,11 @@ export function friendlyAuthError(err: unknown): string {
           : "";
   const m = raw.toLowerCase();
   if (!raw) return "Something went wrong. Please try again.";
-  if (m.includes("popup blocked")) return "Allow pop-ups to continue with Google.";
+  if (m.includes("popup blocked") || m.includes("pop-up blocked") || m.includes("allow pop-ups"))
+    return "Allow pop-ups to continue with Google, or use email instead.";
   if (m.includes("cancel") || m.includes("closed") || m.includes("dismiss")) return "Google sign-in was cancelled.";
+  if (m.includes("google sign-in failed") || m === "sign-in failed" || m.includes("didn’t finish") || m.includes("didnt finish"))
+    return "Google sign-in didn’t finish. You can try again, or continue with email.";
   if (m.includes("invalid email or password") || m.includes("invalid password") || m.includes("invalid credentials") || m.includes("invalid email"))
     return "That email or password doesn’t match.";
   if (m.includes("user not found") || m.includes("no user")) return "No Onegai account uses that email. Create an account, or continue with Google.";
@@ -21,8 +32,13 @@ export function friendlyAuthError(err: unknown): string {
   if (m.includes("account_not_linked") || m.includes("not linked"))
     return "This sign-in is already connected to another Onegai account. Use the original method.";
   if (m.includes("already linked")) return "That Google account is already connected to Onegai. Continue with Google instead.";
-  if (m.includes("not configured") || m.includes("isn’t connected") || m.includes("provider") && m.includes("not found"))
-    return "Google isn’t connected on this deployment yet. Use email, or add Google OAuth in the host environment.";
+  if (
+    m.includes("not configured") ||
+    m.includes("isn’t connected") ||
+    m.includes("isnt connected") ||
+    (m.includes("provider") && m.includes("not found"))
+  )
+    return "Google isn’t connected on this site yet. Use email and password.";
   if (m.includes("invalid origin") || m.includes("csrf") || m.includes("forbidden"))
     return "This sign-in request didn’t come from Onegai. Open the app and try again.";
   if (m.includes("expired") && (m.includes("session") || m.includes("token"))) return "Your session expired. Please sign in again.";
