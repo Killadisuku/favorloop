@@ -2,14 +2,134 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Back } from "@/components/back";
 import { Avatar } from "@/components/avatar";
+import { IconLocate } from "@/components/icons";
+import { PersonaSwitch } from "@/components/persona-switch";
+import { SignOutBtn } from "@/components/sign-out-btn";
 import { AREAS, INTEREST_OPTS, NEED_OPTS, SKILL_OPTS } from "@/lib/constants";
-import { compressImage } from "@/lib/format";
-import { requestGps } from "@/lib/location";
+import { compressImage, relativeTime } from "@/lib/format";
+import {
+  formatAccuracy,
+  isGpsFix,
+  permissionLabel,
+  queryLocationPermission,
+  requestGps,
+  watchLocationPermission,
+  type GpsFix,
+  type LocPermission,
+} from "@/lib/location";
 import { getMe, getPrefs, setMyLocation, updatePrefs, updateProfile } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/settings")({ component: Settings });
+
+function LocationPermissionTest({
+  savedArea,
+  onLocated,
+}: {
+  savedArea: string;
+  onLocated: (fix: GpsFix) => Promise<void>;
+}) {
+  const [perm, setPerm] = useState<LocPermission>("unknown");
+  const [busy, setBusy] = useState(false);
+  const [fix, setFix] = useState<GpsFix | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => watchLocationPermission(setPerm), []);
+
+  const test = async () => {
+    setBusy(true);
+    setError(null);
+    const res = await requestGps();
+    const queried = await queryLocationPermission();
+    if (isGpsFix(res)) setPerm("granted");
+    else if (res.permission === "denied" || res.permission === "unsupported") setPerm(res.permission);
+    else setPerm(queried === "unknown" ? res.permission : queried);
+    setBusy(false);
+    if (!isGpsFix(res)) {
+      setFix(null);
+      setError(res.error);
+      toast.error(res.error);
+      return;
+    }
+    setFix(res);
+    await onLocated(res);
+    toast.success(`Location works. Matching near ${res.area}.`);
+  };
+
+  const status = fix ? "granted" : perm;
+  const statusClass = status === "granted" || status === "denied" || status === "prompt" || status === "unsupported" ? status : "unknown";
+
+  return (
+    <section className="card loc-test">
+      <div className="loc-test-head">
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+          <span className="loc-test-icon" aria-hidden>
+            <IconLocate size={18} />
+          </span>
+          <div>
+            <label>Location permissions</label>
+            <p className="tiny">Test whether this device will share an approximate area. Exact coordinates stay on your phone.</p>
+          </div>
+        </div>
+        <span className={`loc-status ${statusClass}`}>
+          <span className="loc-dot" />
+          {permissionLabel(status)}
+        </span>
+      </div>
+
+      <div className="loc-test-rows">
+        <div className="loc-test-row">
+          <span>Browser support</span>
+          <b>{perm === "unsupported" ? "No GPS on this device" : "Geolocation available"}</b>
+        </div>
+        <div className="loc-test-row">
+          <span>Permission</span>
+          <b>{permissionLabel(perm)}</b>
+        </div>
+        <div className="loc-test-row">
+          <span>Saved area</span>
+          <b>{savedArea || "Not set"}</b>
+        </div>
+        {fix ? (
+          <>
+            <div className="loc-test-row">
+              <span>Last test</span>
+              <b>
+                {fix.area}, {fix.city}
+              </b>
+            </div>
+            <div className="loc-test-row">
+              <span>Accuracy</span>
+              <b>{formatAccuracy(fix.accuracyM)}</b>
+            </div>
+            <div className="loc-test-row">
+              <span>Checked</span>
+              <b>{relativeTime(new Date(fix.at).toISOString())}</b>
+            </div>
+          </>
+        ) : null}
+      </div>
+
+      {error ? <p className="loc-test-hint">{error}</p> : null}
+      {perm === "denied" ? (
+        <p className="loc-test-hint">
+          Open this site’s settings in your browser, set Location to Allow, then test again. On iPhone: Settings → Safari (or
+          Chrome) → Location.
+        </p>
+      ) : null}
+      {perm === "unsupported" ? (
+        <p className="loc-test-hint">This browser cannot share GPS. Pick a neighborhood below — nearby matching still works.</p>
+      ) : null}
+
+      <div className="loc-test-actions">
+        <button type="button" className="btn btn-primary" disabled={busy || perm === "unsupported"} onClick={() => void test()}>
+          {busy ? "Checking…" : fix ? "Test again" : "Test location"}
+        </button>
+      </div>
+    </section>
+  );
+}
 
 function Settings() {
   const { data: me, reload } = useApi(() => getMe(), []);
@@ -79,6 +199,17 @@ function Settings() {
         <label>Bio</label>
         <textarea className="textarea" value={bio} onChange={(e) => setBio(e.target.value)} />
       </div>
+
+      <LocationPermissionTest
+        savedArea={area || me.area}
+        onLocated={async (res) => {
+          await setMyLocation({ data: { ...res, source: "gps" } });
+          setCity(res.city);
+          setArea(res.area);
+          void reload();
+        }}
+      />
+
       <div className="field">
         <label>Your area</label>
         <p className="tiny">Used to match nearby favors. Others never see your exact door.</p>
@@ -91,7 +222,7 @@ function Settings() {
               setLocBusy(true);
               const res = await requestGps();
               setLocBusy(false);
-              if ("error" in res) toast.error(res.error);
+              if (!isGpsFix(res)) toast.error(res.error);
               else {
                 await setMyLocation({ data: { ...res, source: "gps" } });
                 setCity(res.city);
@@ -193,6 +324,16 @@ function Settings() {
       >
         {busy ? "Saving…" : "Save profile"}
       </button>
+      <div className="card" style={{ marginTop: 16 }}>
+        <b>Account</b>
+        <p className="tiny">This session is signed with Onegai. Logging out ends it on this device.</p>
+        <SignOutBtn className="btn btn-ghost btn-block" />
+      </div>
+      <div className="card" style={{ marginTop: 12 }}>
+        <b>Preview neighbors</b>
+        <p className="tiny">Only for trying the two-person journey in this preview. Production accounts stay one user, one profile.</p>
+        <PersonaSwitch me={me} />
+      </div>
     </div>
   );
 }

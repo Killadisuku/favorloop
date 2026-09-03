@@ -20,6 +20,12 @@ function Circles() {
       <h1 className="h1">Circles</h1>
       <p className="tiny">Ask your Circle before the wider neighborhood. Membership is private to the group.</p>
       {loading && <div className="skeleton" style={{ height: 120 }} />}
+      {!loading && (data ?? []).length === 0 && (
+        <div className="card empty">
+          <p>No Circles yet.</p>
+          <p className="tiny">Circles are buildings, workplaces, and friends. Be the first to join one nearby.</p>
+        </div>
+      )}
       {(data ?? []).map((c) => (
         <div className="card" key={c.id}>
           <b>{c.name}</b>

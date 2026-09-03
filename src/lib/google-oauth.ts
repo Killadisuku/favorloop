@@ -7,7 +7,16 @@ function inLivePreview(): boolean {
   );
 }
 
-/** Google: Grok broker in the live preview, native Google OAuth on Vercel. */
+function nativeGoogleMissing(message: string | undefined): boolean {
+  const m = (message ?? "").toLowerCase();
+  return (
+    message === "Social provider google is not configured" ||
+    m.includes("provider not found") ||
+    (m.includes("google") && m.includes("not configured"))
+  );
+}
+
+/** Google: Grok broker in the live preview, native Google OAuth on Vercel when configured. */
 export async function signInWithGoogle(opts: {
   callbackURL: string;
   errorCallbackURL: string;
@@ -21,12 +30,14 @@ export async function signInWithGoogle(opts: {
     callbackURL: opts.callbackURL,
     errorCallbackURL: opts.errorCallbackURL,
   });
-  if (error) {
-    throw new Error(
-      error.message === "Social provider google is not configured" ||
-        error.message?.toLowerCase().includes("not found")
-        ? "Google isn’t connected yet. Use email and password, or add Google OAuth in Vercel."
-        : (error.message ?? "Google sign-in failed."),
-    );
+  if (!error) return;
+  if (nativeGoogleMissing(error.message)) {
+    try {
+      await signIn("grok-google", opts);
+      return;
+    } catch {
+      throw new Error("Google isn’t connected yet. Use email and password, or add Google OAuth in Vercel.");
+    }
   }
+  throw new Error(error.message ?? "Google sign-in failed.");
 }

@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { formatDistance, formatDuration, formatWalk } from "@/lib/format";
-import { helpTypeLabel, presenceLabel } from "@/lib/constants";
+import { presenceLabel } from "@/lib/constants";
 import type { PostCard } from "@/lib/types";
 import { Avatar } from "./avatar";
 
@@ -17,7 +17,7 @@ export function FavorCard({ favor, cta }: { favor: PostCard; cta?: string }) {
           </b>
           <span>✓ {favor.author.reputation}% reliable</span>
         </div>
-        <span className={`chip htype-${favor.helpType}`}>{helpTypeLabel(favor.helpType)}</span>
+        <span className={`chip htype-${favor.helpType}`}>{favor.lifecycle}</span>
       </div>
       <p className="title-line">{favor.title}</p>
       <div className="meta">

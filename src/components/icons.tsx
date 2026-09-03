@@ -5,6 +5,8 @@ import {
   Flag,
   Home,
   Infinity,
+  LocateFixed,
+  MapPin,
   MessageCircle,
   Plus,
   Search,
@@ -27,3 +29,5 @@ export const IconFlag = ({ size = 18 }: { size?: number }) => <Flag size={size} 
 export const IconTrophy = ({ size = 18 }: { size?: number }) => <Trophy size={size} />;
 export const IconSearch = ({ size = 18 }: { size?: number }) => <Search size={size} />;
 export const IconBookmark = ({ size = 18 }: { size?: number }) => <Bookmark size={size} />;
+export const IconLocate = ({ size = 18 }: { size?: number }) => <LocateFixed size={size} />;
+export const IconPin = ({ size = 18 }: { size?: number }) => <MapPin size={size} />;

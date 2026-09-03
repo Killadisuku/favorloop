@@ -2,8 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Avatar } from "@/components/avatar";
 import { Back } from "@/components/back";
 import { IconChat } from "@/components/icons";
-import { getProfile } from "@/lib/loop";
-import { blockUser, reportContent, startDirectChat } from "@/lib/loop";
+import { REPORT_REASONS } from "@/lib/constants";
+import { blockUser, getProfile, reportContent, startDirectChat } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
 import { toast } from "sonner";
 import { useState } from "react";
@@ -14,7 +14,7 @@ function OtherProfile() {
   const { id } = Route.useParams();
   const nav = useNavigate();
   const { data, loading, error, reload } = useApi(() => getProfile({ data: { userId: id } }), [id]);
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState<string>(REPORT_REASONS[0]);
   const [busy, setBusy] = useState(false);
   if (loading) return <div className="skeleton" style={{ height: 200 }} />;
   if (error || !data) {
@@ -117,7 +117,13 @@ function OtherProfile() {
       ))}
       <div className="card" style={{ marginTop: 12 }}>
         <h2 className="h2">Safety</h2>
-        <textarea className="textarea" placeholder="Reason to report" value={reason} onChange={(e) => setReason(e.target.value)} />
+        <div className="filters">
+          {REPORT_REASONS.map((r) => (
+            <button key={r} type="button" className={`chip ${reason === r ? "on" : ""}`} onClick={() => setReason(r)}>
+              {r}
+            </button>
+          ))}
+        </div>
         <div className="row" style={{ marginTop: 10 }}>
           <button
             className="btn btn-danger"

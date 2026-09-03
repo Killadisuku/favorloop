@@ -75,7 +75,12 @@ function Discover() {
           </button>
         </div>
       )}
-      {!loading && list.length === 0 && <div className="card empty">No open posts in this filter. Try All, or be the first to post.</div>}
+      {!loading && list.length === 0 && (
+        <div className="card empty">
+          <p>No nearby favors match this filter.</p>
+          <p className="tiny">Try All, or be the first person to ask for a hand.</p>
+        </div>
+      )}
       {list.map((f) => (
         <FavorCard key={f.id} favor={f} cta="I can help" />
       ))}

@@ -23,7 +23,7 @@ function Activity() {
         Open inbox
       </Link>
       <div className="card activity">
-        {items.length === 0 && <p className="empty">The loop is quiet. Help someone nearby.</p>}
+        {items.length === 0 && <p className="empty">No notifications yet. When someone offers help, you’ll see it here.</p>}
         {items.map((a) => {
           const inner = (
             <article>

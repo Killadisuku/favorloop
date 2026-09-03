@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import { IconShield } from "@/components/icons";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { APP_NAME } from "@/lib/constants";
 
 export const Route = createFileRoute("/")({ component: Landing });
@@ -27,6 +29,22 @@ const STEPS = [
   },
 ] as const;
 
+function StartLink({ children, className }: { children: ReactNode; className: string }) {
+  const { user, isPending } = useCurrentUserState();
+  if (isPending) {
+    return (
+      <span className={className} style={{ opacity: 0.5 }} aria-hidden>
+        {children}
+      </span>
+    );
+  }
+  return (
+    <Link to={user ? "/app" : "/login"} className={className}>
+      {children}
+    </Link>
+  );
+}
+
 function Landing() {
   return (
     <main className="home">
@@ -35,9 +53,7 @@ function Landing() {
           <img src="/onegai-mark.png" alt="" width={72} height={22} />
           <span>{APP_NAME}</span>
         </Link>
-        <Link to="/app" className="home-btn home-btn-primary">
-          Open {APP_NAME}
-        </Link>
+        <StartLink className="home-btn home-btn-primary">Open {APP_NAME}</StartLink>
       </header>
 
       <section className="home-hero" aria-label="Onegai artwork">
@@ -50,9 +66,7 @@ function Landing() {
           />
         </figure>
         <div className="home-hero-cta">
-          <Link to="/app" className="home-btn home-btn-primary">
-            Get started
-          </Link>
+          <StartLink className="home-btn home-btn-primary">Get started</StartLink>
           <a href="#how" className="home-btn home-btn-ghost">
             How it works
           </a>
@@ -87,9 +101,7 @@ function Landing() {
       <section className="home-block home-final">
         <h2 className="home-title">Small favors can make a big difference.</h2>
         <p>Give a little. Get a little. Build something better together.</p>
-        <Link to="/app" className="home-btn home-btn-primary">
-          Join {APP_NAME}
-        </Link>
+        <StartLink className="home-btn home-btn-primary">Join {APP_NAME}</StartLink>
       </section>
     </main>
   );

@@ -29,6 +29,18 @@ export type ProfilePublic = {
   circleNames: string[];
 };
 
+export type TrustBreakdown = {
+  score: number;
+  identity: number;
+  completed: number;
+  reviews: number;
+  reliability: number;
+  reviewCount: number;
+  avgStars: number | null;
+  unreliableCancels: number;
+  accountAgeDays: number;
+};
+
 export type ProfileMe = ProfilePublic & {
   email: string | null;
   credits: number;
@@ -39,6 +51,13 @@ export type ProfileMe = ProfilePublic & {
   lng: number | null;
   circleIds: string[];
   locationSource: string;
+  intent?: string;
+  availability?: string;
+  preferredRadius?: number;
+  presencePref?: string;
+  admin?: boolean;
+  suspended?: boolean;
+  trust?: TrustBreakdown;
 };
 
 export type PostCard = {
@@ -76,6 +95,12 @@ export type PostCard = {
   exactShared: boolean;
   canSeeExact: boolean;
   meetingNote: string | null;
+  cancelledBy?: string | null;
+  cancelledAt?: string | null;
+  cancelReason?: string | null;
+  radiusKm?: number;
+  reviewedByMe?: boolean;
+  disputeStatus?: string | null;
 };
 
 export type OfferRow = {
@@ -161,6 +186,43 @@ export type CircleRow = {
   city: string;
   memberCount: number;
   joined: boolean;
+};
+
+export type ReportRow = {
+  id: string;
+  reporterId: string;
+  reporterName: string;
+  reportedUserId: string | null;
+  reportedName: string | null;
+  postId: string | null;
+  postTitle: string | null;
+  reason: string;
+  details: string;
+  status: string;
+  createdAt: string;
+  resolution: string | null;
+};
+
+export type DisputeRow = {
+  id: string;
+  postId: string;
+  postTitle: string;
+  reporterId: string;
+  reporterName: string;
+  againstUserId: string | null;
+  reason: string;
+  details: string;
+  status: string;
+  createdAt: string;
+  resolution: string | null;
+};
+
+export type PersonaRow = {
+  userId: string;
+  name: string;
+  role: string;
+  active: boolean;
+  admin: boolean;
 };
 
 export type Impact = {

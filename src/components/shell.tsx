@@ -1,7 +1,8 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import type { ProfileMe } from "@/lib/types";
 import { Avatar } from "./avatar";
-import { IconBell, IconChat, IconCompass, IconHome, IconPlus, IconUser, IconWallet } from "./icons";
+import { SignOutBtn } from "./sign-out-btn";
+import { IconBell, IconChat, IconCompass, IconHome, IconPlus, IconShield, IconUser, IconWallet } from "./icons";
 import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
 import { SessionGate } from "./gate";
 
@@ -51,6 +52,16 @@ function ShellInner({ me }: { me: ProfileMe }) {
             <IconWallet size={18} />
             Wallet
           </Link>
+          <Link to="/app/safety" className={`nav-link ${pathname.startsWith("/app/safety") ? "active" : ""}`}>
+            <IconShield size={18} />
+            Safety
+          </Link>
+          {me.admin ? (
+            <Link to="/app/admin" className={`nav-link ${pathname.startsWith("/app/admin") ? "active" : ""}`}>
+              <IconShield size={18} />
+              Admin
+            </Link>
+          ) : null}
         </nav>
         <div className="sidebar-foot">
           <Link to="/app/profile" className="nav-link">
@@ -60,6 +71,7 @@ function ShellInner({ me }: { me: ProfileMe }) {
               <div className="tiny">{me.available} available</div>
             </span>
           </Link>
+          <SignOutBtn className="btn btn-ghost btn-block" />
         </div>
       </aside>
       <main className="main">

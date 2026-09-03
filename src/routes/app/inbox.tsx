@@ -15,7 +15,12 @@ function Inbox() {
     <div>
       <p className="kicker">Messages</p>
       <h1 className="h1">Inbox</h1>
-      {rows.length === 0 && <div className="card empty">No conversations yet. Accept an offer to start chatting.</div>}
+      {rows.length === 0 && (
+        <div className="card empty">
+          <p>No messages yet.</p>
+          <p className="tiny">Accept an offer and chat opens for that favor.</p>
+        </div>
+      )}
       {rows.map((c) => (
         <div key={c.id} className="card" style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <Link to="/app/chat/$id" params={{ id: c.id }} style={{ display: "flex", gap: 12, alignItems: "center", flex: 1, minWidth: 0 }}>

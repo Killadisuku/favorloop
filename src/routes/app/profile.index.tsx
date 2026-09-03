@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Avatar } from "@/components/avatar";
+import { SignOutBtn } from "@/components/sign-out-btn";
 import { APP_NAME } from "@/lib/constants";
 import { getMe, getProfile } from "@/lib/loop";
 import { useApi } from "@/lib/use-api";
@@ -26,24 +27,38 @@ function Profile() {
           <div className="tiny">
             @{me.username} · {me.area || me.city}
           </div>
+          {me.admin ? (
+            <Link className="tiny" to="/app/admin">
+              Open admin
+            </Link>
+          ) : null}
         </div>
       </div>
 
       <section className="card trust-card">
         <p className="kicker">Onegai Trust</p>
-        <h2 className="h2">Built from completed favors</h2>
+        <h2 className="h2">{me.reputation}% · built from completed favors</h2>
         <ul className="trust-list">
-          <li>{me.verified ? "Identity verified" : "Identity not verified yet"}</li>
-          <li>{me.phoneVerified ? "Phone verified" : "Phone not verified yet"}</li>
-          <li>{me.favorsGiven} favors completed as a helper</li>
+          <li>{me.verified ? "Identity verified" : "Identity not verified yet"}{me.trust ? ` · +${me.trust.identity}` : ""}</li>
+          <li>{me.favorsGiven} favors completed as a helper{me.trust ? ` · +${me.trust.completed}` : ""}</li>
           <li>Helped {me.peopleHelped} people</li>
-          <li>{me.reputation}% reliable from reviews</li>
+          <li>
+            {me.trust?.reviewCount
+              ? `${me.trust.avgStars?.toFixed(1)}★ from ${me.trust.reviewCount} reviews · ${me.trust.reviews >= 0 ? "+" : ""}${me.trust.reviews}`
+              : "No reviews yet — they appear after both people confirm a favor"}
+          </li>
           <li>{me.completionRate}% completion rate</li>
           <li>{me.responseRate}% response rate</li>
+          <li>
+            Reliability
+            {me.trust && me.trust.unreliableCancels > 2 ? ` · ${me.trust.unreliableCancels} late cancellations` : " · no penalty"}
+          </li>
           <li>Member of {me.circleNames.length} Circles</li>
           <li>Account age · {ageDays} day{ageDays === 1 ? "" : "s"}</li>
         </ul>
-        <p className="tiny">Trust cannot be self-awarded. It only moves after both people confirm a completed favor.</p>
+        <p className="tiny">
+          Trust starts at 50. It rises when you complete favors and receive reviews. It does not move from open requests, self-reviews, or a single accusation.
+        </p>
       </section>
 
       <div className="impact-grid">
@@ -91,7 +106,7 @@ function Profile() {
       )}
       {tab === "Completed" && (
         <div>
-          {data.completed.length === 0 && <div className="card empty">No completed favors yet.</div>}
+          {data.completed.length === 0 && <div className="card empty">No completed favors yet. Ask or help once and it will show here.</div>}
           {data.completed.map((f) => (
             <Link key={f.id} className="card" to="/app/favor/$id" params={{ id: f.id }} style={{ display: "block" }}>
               <b>{f.title}</b>
@@ -135,6 +150,9 @@ function Profile() {
         <Link className="btn btn-ghost" to="/app/plus">
           {APP_NAME} Plus
         </Link>
+      </div>
+      <div className="row" style={{ marginTop: 10 }}>
+        <SignOutBtn />
       </div>
     </div>
   );

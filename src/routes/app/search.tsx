@@ -17,11 +17,12 @@ function SearchPage() {
       <p className="kicker">Find</p>
       <h1 className="h1">Search</h1>
       <input className="input" placeholder="People, skills, requests…" value={q} onChange={(e) => setQ(e.target.value)} />
+      {q.trim() === "" && <p className="tiny">Search neighbors, skills, and requests. Leave blank and we’ll wait.</p>}
       <h2 className="h2" style={{ margin: "18px 0 8px" }}>
         People
       </h2>
       {people.loading && <div className="skeleton" style={{ height: 80 }} />}
-      {(people.data ?? []).length === 0 && !people.loading && <div className="card empty">No neighbors match.</div>}
+      {q.trim() !== "" && (people.data ?? []).length === 0 && !people.loading && <div className="card empty">No neighbors match.</div>}
       {(people.data ?? []).map((p) => (
         <Link key={p.userId} className="card" style={{ display: "flex", gap: 12, alignItems: "center" }} to="/app/profile/$id" params={{ id: p.userId }}>
           <Avatar user={p} />
@@ -37,7 +38,7 @@ function SearchPage() {
         Requests
       </h2>
       {posts.loading && <div className="skeleton" style={{ height: 80 }} />}
-      {(posts.data ?? []).length === 0 && !posts.loading && <div className="card empty">No posts match.</div>}
+      {q.trim() !== "" && (posts.data ?? []).length === 0 && !posts.loading && <div className="card empty">No posts match.</div>}
       {(posts.data ?? []).map((f) => (
         <FavorCard key={f.id} favor={f} />
       ))}

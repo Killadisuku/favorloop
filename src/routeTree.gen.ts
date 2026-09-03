@@ -18,6 +18,7 @@ import { Route as ResetRouteImport } from './routes/reset'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppActivityRouteImport } from './routes/app/activity'
+import { Route as AppAdminRouteImport } from './routes/app/admin'
 import { Route as AppChallengesRouteImport } from './routes/app/challenges'
 import { Route as AppCirclesRouteImport } from './routes/app/circles'
 import { Route as AppDiscoverRouteImport } from './routes/app/discover'
@@ -79,6 +80,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppActivityRoute = AppActivityRouteImport.update({
   id: '/activity',
   path: '/activity',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminRoute = AppAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => AppRoute,
 } as any)
 const AppChallengesRoute = AppChallengesRouteImport.update({
@@ -176,6 +182,7 @@ export interface FileRoutesByFullPath {
   '/reset': typeof ResetRoute
   '/signup': typeof SignupRoute
   '/app/activity': typeof AppActivityRoute
+  '/app/admin': typeof AppAdminRoute
   '/app/challenges': typeof AppChallengesRoute
   '/app/circles': typeof AppCirclesRoute
   '/app/discover': typeof AppDiscoverRoute
@@ -203,6 +210,7 @@ export interface FileRoutesByTo {
   '/reset': typeof ResetRoute
   '/signup': typeof SignupRoute
   '/app/activity': typeof AppActivityRoute
+  '/app/admin': typeof AppAdminRoute
   '/app/challenges': typeof AppChallengesRoute
   '/app/circles': typeof AppCirclesRoute
   '/app/discover': typeof AppDiscoverRoute
@@ -231,6 +239,7 @@ export interface FileRoutesById {
   '/reset': typeof ResetRoute
   '/signup': typeof SignupRoute
   '/app/activity': typeof AppActivityRoute
+  '/app/admin': typeof AppAdminRoute
   '/app/challenges': typeof AppChallengesRoute
   '/app/circles': typeof AppCirclesRoute
   '/app/discover': typeof AppDiscoverRoute
@@ -261,6 +270,7 @@ export interface FileRouteTypes {
     | '/reset'
     | '/signup'
     | '/app/activity'
+    | '/app/admin'
     | '/app/challenges'
     | '/app/circles'
     | '/app/discover'
@@ -288,6 +298,7 @@ export interface FileRouteTypes {
     | '/reset'
     | '/signup'
     | '/app/activity'
+    | '/app/admin'
     | '/app/challenges'
     | '/app/circles'
     | '/app/discover'
@@ -315,6 +326,7 @@ export interface FileRouteTypes {
     | '/reset'
     | '/signup'
     | '/app/activity'
+    | '/app/admin'
     | '/app/challenges'
     | '/app/circles'
     | '/app/discover'
@@ -409,6 +421,13 @@ declare module '@tanstack/react-router' {
       path: '/activity'
       fullPath: '/app/activity'
       preLoaderRoute: typeof AppActivityRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/admin': {
+      id: '/app/admin'
+      path: '/admin'
+      fullPath: '/app/admin'
+      preLoaderRoute: typeof AppAdminRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/challenges': {
@@ -549,6 +568,7 @@ const AppProfileRouteWithChildren = AppProfileRoute._addFileChildren(
 
 interface AppRouteChildren {
   AppActivityRoute: typeof AppActivityRoute
+  AppAdminRoute: typeof AppAdminRoute
   AppChallengesRoute: typeof AppChallengesRoute
   AppCirclesRoute: typeof AppCirclesRoute
   AppDiscoverRoute: typeof AppDiscoverRoute
@@ -568,6 +588,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppActivityRoute: AppActivityRoute,
+  AppAdminRoute: AppAdminRoute,
   AppChallengesRoute: AppChallengesRoute,
   AppCirclesRoute: AppCirclesRoute,
   AppDiscoverRoute: AppDiscoverRoute,

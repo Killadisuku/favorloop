@@ -137,6 +137,25 @@ function Home() {
 
       <div className="pulse">
         <div>
+          <h2 className="h2">Requests that match you</h2>
+          <p className="tiny">Skills, distance, reliability, Circles, and when you’re free</p>
+        </div>
+        <Link className="tiny" to="/app/help">
+          Update
+        </Link>
+      </div>
+      {skillMatches.length === 0 && (
+        <div className="card empty">
+          <p>Nothing matches your skills right now.</p>
+          <p className="tiny">{me.skills.slice(0, 3).join(" · ") || "Add skills in I can help"} · or be the first person to ask for a hand.</p>
+        </div>
+      )}
+      {skillMatches.map((f) => (
+        <FavorCard key={`s-${f.id}`} favor={f} cta="I can help" />
+      ))}
+
+      <div className="pulse">
+        <div>
           <h2 className="h2">People nearby who need help</h2>
           <p className="tiny">Matched by skill, distance, reliability, and Circles</p>
         </div>
@@ -182,30 +201,14 @@ function Home() {
 
       {view === "list" && recommended.length === 0 && (
         <div className="card empty">
-          <p>Quiet nearby. Ask for help, or check your Circles.</p>
+          <p>No favors nearby yet.</p>
+          <p className="tiny">Be the first person to ask for a hand, or check your Circles.</p>
         </div>
       )}
       {view === "list" &&
         recommended.map((f) => (
           <FavorCard key={f.id} favor={f} cta="I can help" />
         ))}
-
-      {skillMatches.length > 0 && view === "list" && (
-        <>
-          <div className="pulse">
-            <div>
-              <h2 className="h2">People who need your skills</h2>
-              <p className="tiny">{me.skills.slice(0, 3).join(" · ") || "Add skills to match better"}</p>
-            </div>
-            <Link className="tiny" to="/app/help">
-              Update
-            </Link>
-          </div>
-          {skillMatches.map((f) => (
-            <FavorCard key={`s-${f.id}`} favor={f} cta="I can help" />
-          ))}
-        </>
-      )}
 
       <div className="pulse">
         <h2 className="h2">Your {APP_NAME}</h2>
@@ -239,7 +242,7 @@ function Home() {
         </Link>
       </div>
       <div className="card">
-        {circles.filter((c) => c.joined).length === 0 && <p className="tiny">Join a Circle to ask people you already trust first.</p>}
+        {circles.filter((c) => c.joined).length === 0 && <p className="tiny">Join a Circle to ask people you already trust first. Empty Circles wait for the first ask.</p>}
         {circles
           .filter((c) => c.joined)
           .map((c) => (
@@ -261,7 +264,7 @@ function Home() {
         </Link>
       </div>
       <div className="card activity">
-        {notifications.length === 0 && <p className="empty">Quiet for now.</p>}
+        {notifications.length === 0 && <p className="empty">No notifications yet. Help someone nearby and this fills in.</p>}
         {notifications.map((n) => (
           <article
             key={n.id}

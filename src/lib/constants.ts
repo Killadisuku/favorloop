@@ -55,6 +55,44 @@ export const AUDIENCE = [
   { id: "both", label: "Both" },
 ] as const;
 
+export const INTENT_OPTS = [
+  { id: "need", label: "I need help" },
+  { id: "help", label: "I want to help" },
+  { id: "both", label: "Both" },
+] as const;
+
+export const AVAILABILITY_OPTS = ["Now", "Today", "This week", "Weekends", "Flexible"] as const;
+
+export const RADIUS_OPTS = [2, 5, 8, 12, 25] as const;
+
+export const REPORT_REASONS = [
+  "Harassment",
+  "Unsafe behavior",
+  "Fraud/scam",
+  "No-show",
+  "Inappropriate request",
+  "Suspicious behavior",
+  "Other",
+] as const;
+
+export const CANCEL_REASONS = [
+  "Plans changed",
+  "No longer needed",
+  "Helper unavailable",
+  "Requester unavailable",
+  "Scheduling conflict",
+  "Not a good fit",
+  "Other",
+] as const;
+
+export const OUTCOME_REASONS = [
+  { id: "helper_no_show", label: "Helper didn't show" },
+  { id: "requester_no_show", label: "Requester didn't show" },
+  { id: "couldnt_complete", label: "Favor couldn't be completed" },
+  { id: "safety", label: "Safety concern" },
+  { id: "other", label: "Other" },
+] as const;
+
 export const AREAS = [
   { city: "Dubai", name: "Marina", lat: 25.0805, lng: 55.1403 },
   { city: "Dubai", name: "JLT", lat: 25.0692, lng: 55.1415 },
@@ -138,7 +176,7 @@ export function levelFor(given: number) {
   return current;
 }
 
-export const POST_STATUSES = ["open", "accepted", "in_progress", "pending_confirm", "completed", "cancelled"] as const;
+export const POST_STATUSES = ["open", "accepted", "in_progress", "pending_confirm", "completed", "cancelled", "expired", "disputed"] as const;
 
 export function hoursFromEstimate(est: string) {
   if (est.startsWith("5")) return 0.2;
@@ -162,6 +200,8 @@ export function lifecycleLabel(status: string, pendingOffers = 0) {
   if (status === "in_progress") return "In progress";
   if (status === "accepted") return "Accepted";
   if (status === "cancelled") return "Cancelled";
+  if (status === "expired") return "Expired";
+  if (status === "disputed") return "Needs review";
   if (status === "open" && pendingOffers > 0) return "Matched";
   return "Requested";
 }

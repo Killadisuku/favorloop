@@ -22,15 +22,19 @@ import type {
   ChallengeRow,
   CircleRow,
   ConversationRow,
+  DisputeRow,
   HomePayload,
   Impact,
   MessageRow,
   NotifRow,
   OfferRow,
+  PersonaRow,
   PostCard,
   ProfileMe,
   ProfilePublic,
+  ReportRow,
   ReviewRow,
+  TrustBreakdown,
   TxRow,
 } from "@/lib/types";
 
@@ -45,6 +49,14 @@ type Person = ProfilePublic & {
   lng: number | null;
   circleIds: string[];
   locationSource: string;
+  intent: string;
+  availability: string;
+  preferredRadius: number;
+  presencePref: string;
+  admin: boolean;
+  suspended: boolean;
+  warned: boolean;
+  unreliableCancels: number;
 };
 
 type Post = {
@@ -76,6 +88,12 @@ type Post = {
   boostedUntil: string | null;
   helperId: string | null;
   createdAt: string;
+  cancelledBy: string | null;
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  radiusKm: number;
+  expiredAt: string | null;
+  disputeStatus: string | null;
 };
 
 type Circle = { id: string; name: string; kind: string; city: string; memberIds: string[] };
@@ -106,7 +124,39 @@ type Tx = {
 type Review = ReviewRow;
 type Challenge = { id: string; title: string; description: string; reward: number; goal: number; kind: string };
 
-type Prefs = { nearbyNotifs: boolean; circleNotifs: boolean };
+type Prefs = {
+  nearbyNotifs: boolean;
+  circleNotifs: boolean;
+  availability: string;
+  preferredRadius: number;
+  presencePref: string;
+};
+
+type StoredNotif = NotifRow & { userId: string };
+type Bookmark = { userId: string; postId: string };
+type Block = { blockerId: string; blockedId: string };
+type Report = {
+  id: string;
+  reporterId: string;
+  reportedUserId: string | null;
+  postId: string | null;
+  reason: string;
+  details: string;
+  status: string;
+  createdAt: string;
+  resolution: string | null;
+};
+type Dispute = {
+  id: string;
+  postId: string;
+  reporterId: string;
+  againstUserId: string | null;
+  reason: string;
+  details: string;
+  status: string;
+  createdAt: string;
+  resolution: string | null;
+};
 
 type DB = {
   selfId: string;
@@ -116,16 +166,19 @@ type DB = {
   convos: Convo[];
   messages: Msg[];
   txs: Tx[];
-  notifs: NotifRow[];
+  notifs: StoredNotif[];
   reviews: Review[];
-  bookmarks: string[];
-  blocks: string[];
+  bookmarks: Bookmark[];
+  blocks: Block[];
   challenges: Challenge[];
   progress: Record<string, { progress: number; completed: boolean; rewarded: boolean }>;
   plusWaitlist: boolean;
   circles: Circle[];
   prefs: Prefs;
+  reports: Report[];
+  disputes: Dispute[];
 };
+
 
 const KEY = "onegai.loop.v1";
 const LEGACY_KEY = "porfavor.loop.v1";
@@ -154,9 +207,20 @@ function levelFrom(given: number): number {
 }
 
 function enrichPerson(
-  p: Omit<Person, "peopleHelped" | "hoursGiven" | "phoneVerified" | "completionRate" | "responseRate" | "circleNames" | "circleIds" | "locationSource"> & {
+  p: Omit<
+    Person,
+    "peopleHelped" | "hoursGiven" | "phoneVerified" | "completionRate" | "responseRate" | "circleNames" | "circleIds" | "locationSource" | "intent" | "availability" | "preferredRadius" | "presencePref" | "admin" | "suspended" | "warned" | "unreliableCancels"
+  > & {
     circleIds?: string[];
     locationSource?: string;
+    intent?: string;
+    availability?: string;
+    preferredRadius?: number;
+    presencePref?: string;
+    admin?: boolean;
+    suspended?: boolean;
+    warned?: boolean;
+    unreliableCancels?: number;
   },
 ): Person {
   return {
@@ -170,6 +234,14 @@ function enrichPerson(
     circleIds: p.circleIds ?? [],
     skills: (p.skills ?? []).map((s) => LEGACY_SKILL[s] ?? s),
     locationSource: p.locationSource ?? "default",
+    intent: p.intent ?? "both",
+    availability: p.availability ?? "Flexible",
+    preferredRadius: p.preferredRadius ?? 12,
+    presencePref: p.presencePref ?? "either",
+    admin: Boolean(p.admin),
+    suspended: Boolean(p.suspended),
+    warned: Boolean(p.warned),
+    unreliableCancels: p.unreliableCancels ?? 0,
   };
 }
 
@@ -341,7 +413,7 @@ const NEIGHBOR_SEED = [
 const NEIGHBORS: Person[] = NEIGHBOR_SEED.map(enrichPerson);
 
 const SEED_POSTS: Array<
-  Omit<Post, "createdAt" | "helpType" | "whenNeeded" | "photoUrl" | "circleId" | "presence" | "audience" | "lat" | "lng" | "destLat" | "destLng" | "destArea" | "exactShared" | "meetingNote"> & {
+  Omit<Post, "createdAt" | "helpType" | "whenNeeded" | "photoUrl" | "circleId" | "presence" | "audience" | "lat" | "lng" | "destLat" | "destLng" | "destArea" | "exactShared" | "meetingNote" | "cancelledBy" | "cancelledAt" | "cancelReason" | "radiusKm" | "expiredAt" | "disputeStatus"> & {
     hoursAgo: number;
   }
 > = [
@@ -395,6 +467,7 @@ function seed(): DB {
     const presence = inferPresence(p);
     const dest = p.id === "p_airport" ? locOf("Airport") : p.id === "p_shop" ? locOf("Marina") : null;
     return {
+      ...p,
       helpType: p.category === "Transport" ? "paid" : p.category === "Home" || p.id === "p_table" ? "kindness" : "favor",
       whenNeeded: p.id === "p_airport" ? "Tomorrow" : p.id === "p_table" ? "Today · evening" : "Flexible",
       photoUrl: null,
@@ -408,12 +481,17 @@ function seed(): DB {
       destArea: dest && presence === "pickup" ? dest.area : null,
       exactShared: false,
       meetingNote: null,
-      ...p,
+      cancelledBy: null,
+      cancelledAt: null,
+      cancelReason: null,
+      radiusKm: 12,
+      expiredAt: null,
+      disputeStatus: null,
       category: LEGACY_CATEGORY[p.category] ?? p.category,
       createdAt: new Date(Date.now() - p.hoursAgo * 3600_000).toISOString(),
     };
   });
-  const people = [self, ...NEIGHBORS].map((p) => {
+  const people = [self, ...NEIGHBORS, demoAisha(), demoBilal(), demoAdmin(), demoNew()].map((p) => {
     p.circleIds = circles.filter((c) => c.memberIds.includes(p.userId)).map((c) => c.id);
     return p;
   });
@@ -440,6 +518,7 @@ function seed(): DB {
     notifs: [
       {
         id: nid("n"),
+        userId: self.userId,
         type: "welcome",
         title: `Welcome to ${APP_NAME}`,
         body: "Ask for a small hand, or help someone nearby.",
@@ -449,6 +528,7 @@ function seed(): DB {
       },
       {
         id: nid("n"),
+        userId: self.userId,
         type: "match",
         title: "3 requests match your skills",
         body: "Household help and shopping are needed nearby.",
@@ -468,7 +548,9 @@ function seed(): DB {
     progress: {},
     plusWaitlist: false,
     circles,
-    prefs: { nearbyNotifs: true, circleNotifs: true },
+    prefs: { nearbyNotifs: true, circleNotifs: true, availability: "Flexible", preferredRadius: 12, presencePref: "either" },
+    reports: [],
+    disputes: [],
   };
 }
 
@@ -493,11 +575,167 @@ function load(): DB {
 
 function defaultCircles(selfId: string): Circle[] {
   return [
-    { id: "c_marina", name: "Marina neighbors", kind: "My Neighborhood", city: "Dubai", memberIds: ["nb_maya", selfId] },
-    { id: "c_jlt", name: "JLT building", kind: "My Building", city: "Dubai", memberIds: ["nb_omar"] },
+    { id: "c_marina", name: "Marina neighbors", kind: "My Neighborhood", city: "Dubai", memberIds: ["nb_maya", "demo_a", "demo_b", selfId] },
+    { id: "c_jlt", name: "JLT building", kind: "My Building", city: "Dubai", memberIds: ["nb_omar", "demo_b"] },
     { id: "c_downtown", name: "Downtown community", kind: "Community", city: "Dubai", memberIds: ["nb_lina", "nb_sofia"] },
-    { id: "c_friends", name: "Friends & family", kind: "Friends & Family", city: "Dubai", memberIds: [selfId] },
+    { id: "c_friends", name: "Friends & family", kind: "Friends & Family", city: "Dubai", memberIds: [selfId, "demo_a"] },
   ];
+}
+
+function demoAisha(): Person {
+  return enrichPerson({
+    userId: "demo_a",
+    name: "Aisha Rahman",
+    username: "aisha",
+    bio: "New in Marina. Asking neighbors for small hands, happy to return the favor.",
+    city: "Dubai",
+    area: "Marina",
+    photoUrl: null,
+    avatarHue: 18,
+    skills: ["Household help", "Shopping"],
+    needHelpWith: ["Moving", "Technology"],
+    interests: ["Neighbors", "Family"],
+    reputation: 50,
+    favorsGiven: 0,
+    favorsReceived: 0,
+    streak: 0,
+    level: 1,
+    verified: true,
+    plus: false,
+    plusStatus: "free",
+    createdAt: "2026-08-30T10:00:00.000Z",
+    email: null,
+    credits: STARTER_CREDITS,
+    onboardingComplete: true,
+    lat: 25.0805,
+    lng: 55.1403,
+    circleIds: ["c_marina", "c_friends"],
+    locationSource: "manual",
+    intent: "need",
+    availability: "Today",
+    preferredRadius: 8,
+    presencePref: "in_person",
+  });
+}
+
+function demoBilal(): Person {
+  return enrichPerson({
+    userId: "demo_b",
+    name: "Bilal Hassan",
+    username: "bilal",
+    bio: "Ikea, stairs, and a reliable car. I like helping in JLT and Marina.",
+    city: "Dubai",
+    area: "JLT",
+    photoUrl: null,
+    avatarHue: 168,
+    skills: ["Moving", "Household help", "Driving"],
+    needHelpWith: ["Technology"],
+    interests: ["Neighbors", "Fitness"],
+    reputation: 50,
+    favorsGiven: 0,
+    favorsReceived: 0,
+    streak: 0,
+    level: 1,
+    verified: true,
+    plus: false,
+    plusStatus: "free",
+    createdAt: "2026-08-29T10:00:00.000Z",
+    email: null,
+    credits: STARTER_CREDITS,
+    onboardingComplete: true,
+    lat: 25.0692,
+    lng: 55.1415,
+    circleIds: ["c_marina", "c_jlt"],
+    locationSource: "manual",
+    intent: "help",
+    availability: "Now",
+    preferredRadius: 12,
+    presencePref: "in_person",
+  });
+}
+
+function demoAdmin(): Person {
+  return enrichPerson({
+    userId: "demo_admin",
+    name: "Onegai Moderator",
+    username: "moderator",
+    bio: "Reviews reports and disputes so neighbors stay safe.",
+    city: "Dubai",
+    area: "Downtown",
+    photoUrl: null,
+    avatarHue: 220,
+    skills: [],
+    needHelpWith: [],
+    interests: ["Neighbors"],
+    reputation: 99,
+    favorsGiven: 0,
+    favorsReceived: 0,
+    streak: 0,
+    level: 5,
+    verified: true,
+    plus: true,
+    plusStatus: "plus",
+    createdAt: "2026-01-01T10:00:00.000Z",
+    email: null,
+    credits: 0,
+    onboardingComplete: true,
+    lat: 25.1972,
+    lng: 55.2744,
+    circleIds: [],
+    locationSource: "manual",
+    intent: "both",
+    admin: true,
+  });
+}
+
+function demoNew(): Person {
+  return enrichPerson({
+    userId: "demo_new",
+    name: "New neighbor",
+    username: "new",
+    bio: "",
+    city: "Dubai",
+    area: "Nearby",
+    photoUrl: null,
+    avatarHue: 168,
+    skills: [],
+    needHelpWith: [],
+    interests: [],
+    reputation: 50,
+    favorsGiven: 0,
+    favorsReceived: 0,
+    streak: 0,
+    level: 1,
+    verified: false,
+    plus: false,
+    plusStatus: "free",
+    createdAt: now(),
+    email: null,
+    credits: STARTER_CREDITS,
+    onboardingComplete: false,
+    lat: null,
+    lng: null,
+    circleIds: [],
+    locationSource: "default",
+    intent: "both",
+  });
+}
+
+function ensureDemoPeople(db: DB) {
+  const add = (p: Person) => {
+    if (!db.people.some((x) => x.userId === p.userId)) db.people.push(p);
+  };
+  add(demoAisha());
+  add(demoBilal());
+  add(demoAdmin());
+  add(demoNew());
+  for (const c of db.circles) {
+    if (c.id === "c_marina") {
+      for (const id of ["demo_a", "demo_b"]) if (!c.memberIds.includes(id)) c.memberIds.push(id);
+    }
+    if (c.id === "c_jlt" && !c.memberIds.includes("demo_b")) c.memberIds.push("demo_b");
+    if (c.id === "c_friends" && !c.memberIds.includes("demo_a")) c.memberIds.push("demo_a");
+  }
 }
 
 function migrate(db: DB): DB {
@@ -505,6 +743,9 @@ function migrate(db: DB): DB {
   db.prefs = {
     nearbyNotifs: db.prefs?.nearbyNotifs ?? true,
     circleNotifs: db.prefs?.circleNotifs ?? true,
+    availability: db.prefs?.availability ?? "Flexible",
+    preferredRadius: db.prefs?.preferredRadius ?? 12,
+    presencePref: db.prefs?.presencePref ?? "either",
   };
   db.people = (db.people ?? []).map((p) => {
     const skills = (p.skills ?? []).map((s) => LEGACY_SKILL[s] ?? s);
@@ -515,6 +756,7 @@ function migrate(db: DB): DB {
       circleIds,
     });
   });
+  ensureDemoPeople(db);
   db.posts = (db.posts ?? []).map((p) => {
     const loc = locOf(p.area || "Nearby");
     const presence = p.presence ?? inferPresence(p);
@@ -534,8 +776,30 @@ function migrate(db: DB): DB {
       destArea: p.destArea ?? null,
       exactShared: Boolean(p.exactShared),
       meetingNote: p.meetingNote ?? null,
+      cancelledBy: p.cancelledBy ?? null,
+      cancelledAt: p.cancelledAt ?? null,
+      cancelReason: p.cancelReason ?? null,
+      radiusKm: p.radiusKm ?? 12,
+      expiredAt: p.expiredAt ?? null,
+      disputeStatus: p.disputeStatus ?? null,
     };
   });
+  const rawBook = db.bookmarks as unknown;
+  if (!Array.isArray(rawBook)) db.bookmarks = [];
+  else if (typeof rawBook[0] === "string") {
+    db.bookmarks = (rawBook as string[]).map((postId) => ({ userId: db.selfId, postId }));
+  }
+  const rawBlocks = db.blocks as unknown;
+  if (!Array.isArray(rawBlocks)) db.blocks = [];
+  else if (typeof rawBlocks[0] === "string") {
+    db.blocks = (rawBlocks as string[]).map((blockedId) => ({ blockerId: db.selfId, blockedId }));
+  }
+  db.notifs = ((db.notifs ?? []) as StoredNotif[]).map((n) => ({
+    ...n,
+    userId: n.userId ?? db.selfId,
+  }));
+  db.reports = db.reports ?? [];
+  db.disputes = db.disputes ?? [];
   return db;
 }
 
@@ -563,7 +827,8 @@ function toPublic(p: Person): ProfilePublic {
   const helperClosed = asHelper.filter((x) => x.status === "completed" || x.status === "cancelled").length;
   const hours = db.posts
     .filter((x) => x.status === "completed" && x.helperId === p.userId)
-    .reduce((s, x) => s + hoursFromEstimate(x.estimatedTime), p.hoursGiven || 0);
+    .reduce((s, x) => s + hoursFromEstimate(x.estimatedTime), 0);
+  const trust = trustOf(p);
   return {
     userId: p.userId,
     name: p.name,
@@ -576,7 +841,7 @@ function toPublic(p: Person): ProfilePublic {
     skills: p.skills,
     needHelpWith: p.needHelpWith,
     interests: p.interests,
-    reputation: p.reputation,
+    reputation: trust.score,
     favorsGiven: p.favorsGiven,
     favorsReceived: p.favorsReceived,
     peopleHelped: p.favorsGiven,
@@ -588,10 +853,85 @@ function toPublic(p: Person): ProfilePublic {
     plus: p.plus,
     plusStatus: p.plusStatus,
     createdAt: p.createdAt,
-    completionRate: helperClosed ? Math.round((helperDone / helperClosed) * 100) : p.completionRate || p.reputation,
-    responseRate: p.responseRate || Math.min(99, p.reputation + 1),
+    completionRate: helperClosed ? Math.round((helperDone / helperClosed) * 100) : p.favorsGiven === 0 ? 100 : p.completionRate || 100,
+    responseRate: responseRateOf(p),
     circleNames,
   };
+}
+
+function trustOf(p: Person): TrustBreakdown {
+  const db = load();
+  const reviews = db.reviews.filter((r) => r.toUserId === p.userId);
+  const completedHelper = db.posts.filter((x) => x.status === "completed" && x.helperId === p.userId).length;
+  const completedAsk = db.posts.filter((x) => x.status === "completed" && x.userId === p.userId).length;
+  const avgStars = reviews.length ? reviews.reduce((s, r) => s + r.stars, 0) / reviews.length : null;
+  const identity = p.verified ? 8 : 0;
+  const completed = Math.min(24, completedHelper * 3 + Math.min(8, completedAsk));
+  const reviewPts = avgStars == null ? 0 : Math.round((avgStars - 3) * 8);
+  const reliability = -Math.min(18, (p.unreliableCancels || 0) * 6);
+  const accountAgeDays = Math.max(1, Math.round((Date.now() - +new Date(p.createdAt)) / 86400000));
+  const score = Math.max(15, Math.min(99, 50 + identity + completed + reviewPts + reliability));
+  return {
+    score,
+    identity,
+    completed,
+    reviews: reviewPts,
+    reliability,
+    reviewCount: reviews.length,
+    avgStars,
+    unreliableCancels: p.unreliableCancels || 0,
+    accountAgeDays,
+  };
+}
+
+function responseRateOf(p: Person) {
+  const db = load();
+  const incoming = db.offers.filter((o) => o.requesterId === p.userId);
+  if (incoming.length === 0) return p.favorsGiven + p.favorsReceived === 0 ? 100 : p.responseRate || 100;
+  const decided = incoming.filter((o) => o.status !== "pending").length;
+  return Math.round((decided / incoming.length) * 100);
+}
+
+function blockedWith(otherId: string, selfId = load().selfId) {
+  return load().blocks.some(
+    (b) => (b.blockerId === selfId && b.blockedId === otherId) || (b.blockerId === otherId && b.blockedId === selfId),
+  );
+}
+
+function myNotifs() {
+  return load().notifs.filter((n) => n.userId === load().selfId);
+}
+
+function assertActive(): { ok: false; error: string } | null {
+  if (self().suspended) return { ok: false, error: "This account is suspended. Contact Onegai if this is a mistake." };
+  return null;
+}
+
+function expiresAt(post: Post): number {
+  if (post.deadline) {
+    const d = +new Date(post.deadline);
+    if (Number.isFinite(d)) return d;
+  }
+  const created = +new Date(post.createdAt);
+  const when = post.whenNeeded ?? "Flexible";
+  if (when.startsWith("Today")) return created + 18 * 3600_000;
+  if (when === "Tomorrow") return created + 36 * 3600_000;
+  if (when === "This weekend") return created + 72 * 3600_000;
+  return created + 7 * 86400_000;
+}
+
+function expireOpenPosts() {
+  const db = load();
+  let changed = false;
+  for (const p of db.posts) {
+    if (p.status !== "open") continue;
+    if (Date.now() <= expiresAt(p)) continue;
+    p.status = "expired";
+    p.expiredAt = now();
+    notify(p.userId, "Request expired", `No one accepted “${p.title}” in time. You can edit, expand the area, or try again.`, `/app/favor/${p.id}`, "expired");
+    changed = true;
+  }
+  if (changed) save();
 }
 function reservedOf(userId: string) {
   return load()
@@ -618,11 +958,22 @@ function toMe(p: Person): ProfileMe {
     lng: p.lng,
     circleIds: p.circleIds ?? [],
     locationSource: p.locationSource ?? "default",
+    intent: p.intent,
+    availability: p.availability,
+    preferredRadius: p.preferredRadius,
+    presencePref: p.presencePref,
+    admin: p.admin,
+    suspended: p.suspended,
+    trust: trustOf(p),
   };
 }
 function notify(userId: string, title: string, body: string, href: string, type = "note") {
-  if (userId !== load().selfId) return;
-  load().notifs.unshift({ id: nid("n"), type, title, body, href, read: false, createdAt: now() });
+  if (!userId) return;
+  const recent = load().notifs.find(
+    (n) => n.userId === userId && n.type === type && n.href === href && Date.now() - +new Date(n.createdAt) < 120_000,
+  );
+  if (recent) return;
+  load().notifs.unshift({ id: nid("n"), userId, type, title, body, href, read: false, createdAt: now() });
 }
 
 function inferPresence(p: { category: string; title: string; id?: string }) {
@@ -700,6 +1051,10 @@ function matchScore(post: Post, me: Person, km: number | null) {
   if (post.boostedUntil && new Date(post.boostedUntil) > new Date()) s += 8;
   if (post.whenNeeded?.startsWith("Today")) s += 8;
   if (post.audience === "circle" && post.circleId && me.circleIds.includes(post.circleId)) s += 8;
+  if (me.availability === "Now" || me.availability === "Today") s += 8;
+  if (me.presencePref === "online" && post.presence === "in_person") s -= 12;
+  else if (me.presencePref === "in_person" && post.presence === "online") s -= 8;
+  else if (me.presencePref === post.presence || me.presencePref === "either" || post.presence === "either") s += 6;
   return s;
 }
 
@@ -717,6 +1072,8 @@ function card(post: Post): PostCard {
   const accepted = ["accepted", "in_progress", "pending_confirm", "completed"].includes(post.status);
   const canSeeExact = involved && (me.userId === post.userId || (accepted && post.exactShared));
   const approx = point.lat != null && point.lng != null ? fuzz(point.lat, point.lng, post.id) : null;
+  const bookmarked = db.bookmarks.some((b) => b.userId === me.userId && b.postId === post.id);
+  const reviewedByMe = db.reviews.some((r) => r.favorId === post.id && r.fromUserId === me.userId);
   return {
     id: post.id,
     type: post.type,
@@ -742,7 +1099,7 @@ function card(post: Post): PostCard {
     createdAt: post.createdAt,
     distanceKm: km,
     matchScore: matchScore(post, me, km),
-    bookmarked: db.bookmarks.includes(post.id),
+    bookmarked,
     author: toPublic(author),
     helper: helper ? toPublic(helper) : null,
     pendingOfferCount: pending,
@@ -752,6 +1109,12 @@ function card(post: Post): PostCard {
     exactShared: Boolean(post.exactShared),
     canSeeExact,
     meetingNote: canSeeExact ? post.meetingNote : null,
+    cancelledBy: post.cancelledBy,
+    cancelledAt: post.cancelledAt,
+    cancelReason: post.cancelReason,
+    radiusKm: post.radiusKm ?? 12,
+    reviewedByMe,
+    disputeStatus: post.disputeStatus,
   };
 }
 
@@ -788,7 +1151,7 @@ export async function getMe() {
   return ok(toMe(self()));
 }
 
-export async function completeOnboarding(raw: DataArg<{ name: string; username: string; bio: string; city: string; area: string; photoUrl: string | null; avatarHue: number; lat: number | null; lng: number | null; skills: string[]; needHelpWith: string[]; interests: string[] }>) {
+export async function completeOnboarding(raw: DataArg<{ name: string; username: string; bio: string; city: string; area: string; photoUrl: string | null; avatarHue: number; lat: number | null; lng: number | null; skills: string[]; needHelpWith: string[]; interests: string[]; intent?: string }>) {
   const data = arg(raw, {} as never);
   const me = self();
   if (!data.name || data.name.trim().length < 2) return fail("Please add your name.");
@@ -801,9 +1164,12 @@ export async function completeOnboarding(raw: DataArg<{ name: string; username: 
   me.avatarHue = data.avatarHue ?? 168;
   me.lat = data.lat;
   me.lng = data.lng;
+  if (data.lat != null && data.lng != null) me.locationSource = "gps";
+  else if (data.area) me.locationSource = "manual";
   me.skills = data.skills ?? me.skills;
   me.needHelpWith = data.needHelpWith ?? me.needHelpWith;
   me.interests = data.interests ?? me.interests;
+  if (data.intent && ["need", "help", "both"].includes(data.intent)) me.intent = data.intent;
   me.onboardingComplete = true;
   save();
   return ok(true);
@@ -837,7 +1203,7 @@ export async function getProfile(raw: DataArg<{ userId: string }>) {
   const { userId } = arg(raw, { userId: "" });
   const p = person(userId);
   if (!p) return fail("Profile not found.");
-  if (load().blocks.includes(userId) && userId !== load().selfId) return fail("This profile is not available.");
+  if (blockedWith(userId) && userId !== load().selfId) return fail("This profile is not available.");
   return ok({
     profile: toPublic(p),
     isSelf: userId === load().selfId,
@@ -854,7 +1220,7 @@ export async function listPeople(raw?: DataArg<{ q?: string; city?: string }>) {
   const city = (data.city ?? "").toLowerCase();
   const db = load();
   const out = db.people
-    .filter((p) => p.userId !== db.selfId && !db.blocks.includes(p.userId))
+    .filter((p) => p.userId !== db.selfId && !blockedWith(p.userId) && !p.suspended)
     .filter((p) => !city || p.city.toLowerCase() === city)
     .filter((p) => !q || `${p.name} ${p.username} ${p.bio} ${p.skills.join(" ")} ${p.city}`.toLowerCase().includes(q));
   return ok(out.map(toPublic));
@@ -893,6 +1259,8 @@ export async function createPost(
   }>,
 ) {
   const data = arg(raw, {} as never);
+  const stopped = assertActive();
+  if (stopped) return stopped;
   const me = self();
   if (!data.title || data.title.trim().length < 4) return fail("Add a short title so neighbors know what you need.");
   const category = LEGACY_CATEGORY[data.category] ?? data.category;
@@ -955,48 +1323,46 @@ export async function createPost(
     boostedUntil: null,
     helperId: null,
     createdAt: now(),
+    cancelledBy: null,
+    cancelledAt: null,
+    cancelReason: null,
+    radiusKm: me.preferredRadius ?? 12,
+    expiredAt: null,
+    disputeStatus: null,
   };
   const db = load();
   db.posts.unshift(post);
   if (data.type === "request") {
-    const helper =
-      NEIGHBORS.filter((n) => !(audience === "circle" && circleId) || n.circleIds.includes(circleId!))
-        .sort((a, b) => {
-          const skill = Number(skillHit(b.skills, category)) - Number(skillHit(a.skills, category));
-          if (skill) return skill;
-          return (haversine(post, a) ?? 99) - (haversine(post, b) ?? 99);
-        })[0] ?? NEIGHBORS[0];
-    db.offers.unshift({
-      id: nid("o"),
-      postId: post.id,
-      requesterId: me.userId,
-      helperId: helper.userId,
-      message: `I can help with this around ${helper.area}.`,
-      status: "pending",
-      createdAt: now(),
-    });
-    const km = haversine(me, helper);
-    notify(
-      me.userId,
-      km != null ? `Someone ${km < 1 ? `${Math.round(km * 1000)}m` : `${km} km`} away can help` : "New offer to help",
-      `${helper.name} offered on “${post.title}”.`,
-      `/app/favor/${post.id}`,
-      "new_offer",
-    );
+    let n = 0;
+    for (const helper of db.people) {
+      if (helper.userId === me.userId || helper.suspended || helper.admin) continue;
+      if (blockedWith(helper.userId, me.userId)) continue;
+      if (audience === "circle" && circleId && !helper.circleIds.includes(circleId)) continue;
+      if (!skillHit(helper.skills, category)) continue;
+      const km = presence === "online" ? 0 : haversine(helper, { lat, lng });
+      const radius = Math.max(post.radiusKm, helper.preferredRadius ?? 12);
+      if (presence !== "online" && km != null && km > radius) continue;
+      notify(helper.userId, "A nearby favor matches you", `“${post.title}” around ${area}.`, `/app/favor/${post.id}`, "match");
+      n += 1;
+      if (n >= 6) break;
+    }
   }
   save();
   return ok(card(post));
 }
 
-export async function listDiscover(raw?: DataArg<{ q?: string; category?: string; type?: string; sort?: string; nearby?: boolean; circleId?: string; skillsOnly?: boolean }>) {
-  const data = arg(raw, { q: "", category: "All", type: "all", sort: "newest", nearby: false, circleId: "", skillsOnly: false });
+export async function listDiscover(raw?: DataArg<{ q?: string; category?: string; type?: string; sort?: string; nearby?: boolean; circleId?: string; skillsOnly?: boolean; page?: number }>) {
+  const data = arg(raw, { q: "", category: "All", type: "all", sort: "newest", nearby: false, circleId: "", skillsOnly: false, page: 0 });
+  expireOpenPosts();
   const db = load();
   const me = self();
+  const page = Math.max(0, data.page ?? 0);
+  const pageSize = 24;
   let cards = db.posts
-    .filter((p) => p.status === "open" && p.userId !== db.selfId && !db.blocks.includes(p.userId))
+    .filter((p) => p.status === "open" && p.userId !== db.selfId && !blockedWith(p.userId) && p.type !== undefined)
     .filter((p) => p.audience !== "circle" || !p.circleId || me.circleIds.includes(p.circleId))
     .map(card)
-    .filter((c) => c.presence === "online" || c.distanceKm == null || c.distanceKm < 28);
+    .filter((c) => c.presence === "online" || c.distanceKm == null || c.distanceKm <= (c.radiusKm ?? 12));
   if (data.nearby) cards = cards.filter((c) => c.distanceKm != null && c.distanceKm < 8);
   if (data.type === "offer" || data.type === "request") cards = cards.filter((c) => c.type === data.type);
   if (data.category && data.category !== "All" && data.category !== "Nearby") cards = cards.filter((c) => c.category === data.category);
@@ -1015,13 +1381,17 @@ export async function listDiscover(raw?: DataArg<{ q?: string; category?: string
     if (boost) return boost;
     return +new Date(b.createdAt) - +new Date(a.createdAt);
   });
-  return ok(cards);
+  return ok(cards.slice(page * pageSize, page * pageSize + pageSize));
 }
 
 export async function getPost(raw: DataArg<{ id: string }>) {
   const { id } = arg(raw, { id: "" });
+  expireOpenPosts();
   const post = load().posts.find((p) => p.id === id);
   if (!post) return fail("This request is gone.");
+  if (blockedWith(post.userId) && post.userId !== load().selfId && post.helperId !== load().selfId) {
+    return fail("This user is no longer available.");
+  }
   const offers: OfferRow[] = load()
     .offers.filter((o) => o.postId === id)
     .map((o) => ({
@@ -1035,13 +1405,41 @@ export async function getPost(raw: DataArg<{ id: string }>) {
   return ok({ post: card(post), offers });
 }
 
-export async function cancelPost(raw: DataArg<{ id: string }>) {
-  const { id } = arg(raw, { id: "" });
-  const post = load().posts.find((p) => p.id === id && p.userId === load().selfId);
-  if (!post) return fail("You can only cancel your own request.");
-  if (!["open", "accepted"].includes(post.status)) return fail("This request can no longer be cancelled.");
+export async function cancelPost(raw: DataArg<{ id: string; reason?: string }>) {
+  const { id, reason } = arg(raw, { id: "", reason: "" });
+  const stopped = assertActive();
+  if (stopped) return stopped;
+  const db = load();
+  const post = db.posts.find((p) => p.id === id);
+  if (!post) return fail("That favor is no longer available.");
+  const me = db.selfId;
+  const isRequester = post.userId === me;
+  const isHelper = post.helperId === me;
+  if (!isRequester && !isHelper) return fail("You can only cancel a favor you are part of.");
+  if (["completed", "cancelled", "expired"].includes(post.status)) return fail("This request can no longer be cancelled.");
+  const afterMatch = ["accepted", "in_progress", "pending_confirm", "disputed"].includes(post.status);
   post.status = "cancelled";
-  post.helperId = null;
+  post.cancelledBy = me;
+  post.cancelledAt = now();
+  post.cancelReason = (reason || "").trim().slice(0, 280) || (isHelper ? "Helper cancelled" : "Requester cancelled");
+  db.offers.filter((o) => o.postId === post.id && o.status === "pending").forEach((o) => (o.status = "declined"));
+  if (afterMatch) {
+    const actor = self();
+    actor.unreliableCancels = (actor.unreliableCancels || 0) + 1;
+    if (actor.unreliableCancels <= 2) {
+      /* first two late cancels are noted, not heavily punished */
+    }
+  }
+  const otherId = isRequester ? post.helperId : post.userId;
+  if (otherId) {
+    notify(
+      otherId,
+      isHelper ? "The helper cancelled" : "The requester cancelled",
+      `“${post.title}” was cancelled${post.cancelReason ? ` · ${post.cancelReason}` : ""}.`,
+      `/app/favor/${post.id}`,
+      "cancelled",
+    );
+  }
   save();
   return ok(true);
 }
@@ -1049,10 +1447,11 @@ export async function cancelPost(raw: DataArg<{ id: string }>) {
 export async function toggleBookmark(raw: DataArg<{ id: string }>) {
   const { id } = arg(raw, { id: "" });
   const db = load();
-  if (db.bookmarks.includes(id)) db.bookmarks = db.bookmarks.filter((x) => x !== id);
-  else db.bookmarks.push(id);
+  const existing = db.bookmarks.find((b) => b.userId === db.selfId && b.postId === id);
+  if (existing) db.bookmarks = db.bookmarks.filter((b) => b !== existing);
+  else db.bookmarks.push({ userId: db.selfId, postId: id });
   save();
-  return ok({ bookmarked: db.bookmarks.includes(id) });
+  return ok({ bookmarked: db.bookmarks.some((b) => b.userId === db.selfId && b.postId === id) });
 }
 
 export async function boostPost(raw: DataArg<{ id: string }>) {
@@ -1080,11 +1479,15 @@ export async function boostPost(raw: DataArg<{ id: string }>) {
 
 export async function offerHelp(raw: DataArg<{ postId: string; message: string }>) {
   const data = arg(raw, { postId: "", message: "" });
+  const stopped = assertActive();
+  if (stopped) return stopped;
   const db = load();
   const post = db.posts.find((p) => p.id === data.postId);
   if (!post) return fail("Request not found.");
   if (post.userId === db.selfId) return fail("You cannot offer help on your own request.");
   if (post.status !== "open") return fail("This request is no longer open.");
+  if (post.type !== "request") return fail("This is an offer, not a request.");
+  if (blockedWith(post.userId)) return fail("This user is no longer available.");
   if (db.offers.some((o) => o.postId === post.id && o.helperId === db.selfId)) return fail("You already offered to help on this request.");
   const id = nid("o");
   db.offers.unshift({
@@ -1096,6 +1499,8 @@ export async function offerHelp(raw: DataArg<{ postId: string; message: string }
     status: "pending",
     createdAt: now(),
   });
+  const helper = self();
+  notify(post.userId, "Someone offered to help", `${helper.name} offered on “${post.title}”.`, `/app/favor/${post.id}`, "new_offer");
   save();
   return ok({ id, status: "pending" as const });
 }
@@ -1110,6 +1515,7 @@ export async function decideOffer(raw: DataArg<{ offerId: string; action: string
   if (!post || post.status !== "open") return fail("This request is no longer open.");
   if (data.action !== "accept") {
     offer.status = "declined";
+    notify(offer.helperId, "Offer declined", `The requester passed on “${post.title}”.`, `/app/favor/${post.id}`, "offer_declined");
     save();
     return ok({ status: "declined" as const });
   }
@@ -1134,6 +1540,7 @@ export async function decideOffer(raw: DataArg<{ offerId: string; action: string
     createdAt: now(),
   });
   notify(db.selfId, "Chat opened", `You’re looping with ${helper.name}.`, `/app/chat/${convoId}`, "offer_accepted");
+  notify(offer.helperId, "Your offer was accepted", `${self().name} accepted you for “${post.title}”.`, `/app/chat/${convoId}`, "offer_accepted");
   save();
   return ok({ status: "accepted" as const, conversationId: convoId });
 }
@@ -1208,14 +1615,20 @@ export async function sendMessage(raw: DataArg<{ id?: string; conversationId?: s
   const cid = data.conversationId || data.id || "";
   const c = db.convos.find((x) => x.id === cid);
   if (!c || !c.memberIds.includes(db.selfId)) return fail("Chat not found.");
+  const otherId = c.memberIds.find((id) => id !== db.selfId);
+  if (otherId && blockedWith(otherId)) return fail("You can’t message this person.");
+  const stopped = assertActive();
+  if (stopped) return stopped;
   db.messages.push({ id: nid("m"), conversationId: c.id, senderId: db.selfId, body: body.slice(0, 2000), createdAt: now() });
-  const other = c.memberIds.find((id) => id !== db.selfId);
-  if (other && other.startsWith("nb_")) {
+  if (otherId) {
+    notify(otherId, "New message", body.slice(0, 80), `/app/chat/${c.id}`, "message");
+  }
+  if (otherId && otherId.startsWith("nb_")) {
     const replies = ["On my way in 10.", "Got it — see you downstairs.", "Done on my side when you are.", "Happy to help. Confirm when you’re ready."];
     db.messages.push({
       id: nid("m"),
       conversationId: c.id,
-      senderId: other,
+      senderId: otherId,
       body: replies[Math.floor(Math.random() * replies.length)],
       createdAt: new Date(Date.now() + 400).toISOString(),
     });
@@ -1236,6 +1649,9 @@ export async function startDirectChat(raw: DataArg<{ userId: string }>) {
   const { userId } = arg(raw, { userId: "" });
   const db = load();
   if (!person(userId)) return fail("Profile not found.");
+  if (blockedWith(userId)) return fail("This user is no longer available.");
+  const stopped = assertActive();
+  if (stopped) return stopped;
   let c = db.convos.find((x) => !x.postId && x.memberIds.includes(db.selfId) && x.memberIds.includes(userId));
   if (!c) {
     c = { id: nid("c"), postId: null, memberIds: [db.selfId, userId], archivedBy: [], lastRead: {} };
@@ -1262,7 +1678,8 @@ export async function startFavor(raw: DataArg<{ postId: string }>) {
   if (post.status !== "accepted") return fail("This favor is not ready to start.");
   if (post.userId !== db.selfId && post.helperId !== db.selfId) return fail("Only people on this favor can start it.");
   post.status = "in_progress";
-  notify(db.selfId, "Favor in progress", `“${post.title}” is underway. Approximate location stays private until you meet.`, `/app/favor/${post.id}`, "in_progress");
+  notify(post.userId, "Favor in progress", `“${post.title}” is underway. Approximate location stays private until you meet.`, `/app/favor/${post.id}`, "in_progress");
+  if (post.helperId) notify(post.helperId, "Favor in progress", `“${post.title}” is underway.`, `/app/favor/${post.id}`, "in_progress");
   save();
   return ok(true);
 }
@@ -1275,7 +1692,7 @@ export async function requestComplete(raw: DataArg<{ postId: string }>) {
     return fail("Only the helper can request completion on an accepted favor.");
   }
   post.status = "pending_confirm";
-  notify(post.userId, "Your favor was completed", `Confirm “${post.title}” so both of you can leave a review.`, `/app/favor/${post.id}`, "favor_completed");
+  notify(post.userId, "Please confirm completion", `Confirm “${post.title}” so both of you can leave a review.`, `/app/favor/${post.id}`, "confirm_needed");
   save();
   return ok(true);
 }
@@ -1313,7 +1730,8 @@ export async function confirmComplete(raw: DataArg<{ postId: string }>) {
     createdAt: now(),
   });
   bumpChallenge();
-  notify(helper.userId, "You helped someone today", `${requester.name} confirmed “${post.title}”.`, `/app/favor/${post.id}`, "helped");
+  notify(helper.userId, "You helped someone today", `${requester.name} confirmed “${post.title}”. Please leave a review.`, `/app/favor/${post.id}`, "helped");
+  notify(requester.userId, "Favor completed", `“${post.title}” is done. Please leave a review.`, `/app/favor/${post.id}`, "review_requested");
   save();
   return ok(true);
 }
@@ -1321,12 +1739,22 @@ export async function confirmComplete(raw: DataArg<{ postId: string }>) {
 export async function submitReview(raw: DataArg<{ favorId: string; toUserId: string; stars: number; tags: string[]; body: string }>) {
   const data = arg(raw, {} as never);
   const db = load();
+  if (data.toUserId === db.selfId) return fail("You cannot review yourself.");
   if (db.reviews.some((r) => r.favorId === data.favorId && r.fromUserId === db.selfId)) {
     return fail("You already reviewed this favor.");
   }
   const post = db.posts.find((p) => p.id === data.favorId);
   if (!post || post.status !== "completed") return fail("Reviews are only for completed favors.");
   if (post.userId !== db.selfId && post.helperId !== db.selfId) return fail("Only people on this favor can review it.");
+  const counterpart = db.selfId === post.userId ? post.helperId : post.userId;
+  if (!counterpart || data.toUserId !== counterpart) return fail("You can only review the other person on this favor.");
+  const samePair = db.reviews.filter(
+    (r) =>
+      r.fromUserId === db.selfId &&
+      r.toUserId === data.toUserId &&
+      Date.now() - +new Date(r.createdAt) < 24 * 3600_000,
+  ).length;
+  if (samePair >= 2) return fail("Trust only moves from real completed favors — not repeated ratings.");
   db.reviews.unshift({
     id: nid("r"),
     favorId: data.favorId,
@@ -1340,17 +1768,34 @@ export async function submitReview(raw: DataArg<{ favorId: string; toUserId: str
   });
   const target = person(data.toUserId);
   if (target) {
-    const mine = db.reviews.filter((r) => r.toUserId === target.userId);
-    const avg = mine.reduce((s, r) => s + r.stars, 0) / mine.length;
-    target.reputation = Math.round(70 + avg * 6);
+    target.reputation = trustOf(target).score;
   }
-  notify(db.selfId, "Someone you helped just thanked you", "A review from a completed favor was added.", `/app/profile/${data.toUserId}`, "thanks");
+  notify(data.toUserId, "Someone thanked you", `${self().name} left a review after a completed favor.`, `/app/profile/${data.toUserId}`, "thanks");
   save();
   return ok(true);
 }
 
-export async function reportContent(_raw?: DataArg<unknown>) {
-  notify(load().selfId, "Report received", "Thanks. We’ll review this.", "/app/safety", "report");
+export async function reportContent(raw?: DataArg<{ reportedUserId?: string | null; postId?: string | null; reason?: string; details?: string }>) {
+  const data = arg(raw, { reportedUserId: null as string | null, postId: null as string | null, reason: "", details: "" });
+  const db = load();
+  if (!data.reason) return fail("Please say why you are reporting.");
+  if (!data.reportedUserId && !data.postId) return fail("Nothing to report.");
+  if (data.reportedUserId === db.selfId) return fail("You cannot report yourself.");
+  const report: Report = {
+    id: nid("rp"),
+    reporterId: db.selfId,
+    reportedUserId: data.reportedUserId ?? null,
+    postId: data.postId ?? null,
+    reason: data.reason.slice(0, 80),
+    details: (data.details ?? "").slice(0, 500),
+    status: "open",
+    createdAt: now(),
+    resolution: null,
+  };
+  db.reports.unshift(report);
+  notify(db.selfId, "Report received", "Thanks. A moderator will review this.", "/app/safety", "report");
+  const admin = db.people.find((p) => p.admin);
+  if (admin) notify(admin.userId, "New report", `${self().name}: ${data.reason}`, "/app/admin", "report");
   save();
   return ok(true);
 }
@@ -1358,14 +1803,27 @@ export async function reportContent(_raw?: DataArg<unknown>) {
 export async function blockUser(raw: DataArg<{ userId: string; blocked?: boolean }>) {
   const { userId, blocked } = arg(raw, { userId: "", blocked: true });
   const db = load();
-  if (blocked === false) db.blocks = db.blocks.filter((id) => id !== userId);
-  else if (userId && !db.blocks.includes(userId)) db.blocks.push(userId);
+  if (!userId || userId === db.selfId) return fail("You cannot block yourself.");
+  if (blocked === false) db.blocks = db.blocks.filter((b) => !(b.blockerId === db.selfId && b.blockedId === userId));
+  else if (!db.blocks.some((b) => b.blockerId === db.selfId && b.blockedId === userId)) {
+    db.blocks.push({ blockerId: db.selfId, blockedId: userId });
+    db.offers
+      .filter((o) => o.status === "pending" && ((o.helperId === userId && o.requesterId === db.selfId) || (o.helperId === db.selfId && o.requesterId === userId)))
+      .forEach((o) => (o.status = "declined"));
+  }
   save();
   return ok(true);
 }
 
 export async function listBlocks() {
-  return ok(load().blocks.map((id) => person(id)).filter(Boolean).map((p) => toPublic(p!)));
+  const db = load();
+  return ok(
+    db.blocks
+      .filter((b) => b.blockerId === db.selfId)
+      .map((b) => person(b.blockedId))
+      .filter(Boolean)
+      .map((p) => toPublic(p!)),
+  );
 }
 
 export async function getWallet() {
@@ -1405,7 +1863,7 @@ export async function getChallenges() {
     return { ...c, progress: p.progress, completed: p.completed, rewarded: p.rewarded };
   });
   const people = db.people
-    .filter((p) => p.userId !== db.selfId && !db.blocks.includes(p.userId))
+    .filter((p) => p.userId !== db.selfId && !blockedWith(p.userId) && !p.admin)
     .sort((a, b) => b.favorsGiven - a.favorsGiven)
     .map((p) => ({
       userId: p.userId,
@@ -1447,30 +1905,36 @@ export async function getChallenges() {
 }
 
 export async function listNotifications() {
-  const n = load().notifs;
-  return ok({ notifications: n, unread: n.filter((x) => !x.read).length });
+  const n = myNotifs();
+  return ok({ notifications: n.map(({ userId: _u, ...rest }) => rest), unread: n.filter((x) => !x.read).length });
 }
 
 export async function markNotificationsRead() {
-  load().notifs.forEach((n) => (n.read = true));
+  const id = load().selfId;
+  load().notifs.forEach((n) => {
+    if (n.userId === id) n.read = true;
+  });
   save();
   return ok(true);
 }
 
 export async function getHome() {
+  expireOpenPosts();
   const db = load();
   const me = toMe(self());
-  const mine = db.posts.filter((p) => p.userId === me.userId && ["open", "accepted", "in_progress", "pending_confirm"].includes(p.status)).map(card);
-  const helping = db.posts.filter((p) => p.helperId === me.userId && ["accepted", "in_progress", "pending_confirm"].includes(p.status)).map(card);
+  const mine = db.posts.filter((p) => p.userId === me.userId && ["open", "accepted", "in_progress", "pending_confirm", "expired", "disputed"].includes(p.status)).map(card);
+  const helping = db.posts.filter((p) => p.helperId === me.userId && ["accepted", "in_progress", "pending_confirm", "disputed"].includes(p.status)).map(card);
+  const radius = me.preferredRadius ?? 12;
   const open = db.posts
-    .filter((p) => p.status === "open" && p.userId !== me.userId && p.type === "request" && !db.blocks.includes(p.userId))
+    .filter((p) => p.status === "open" && p.userId !== me.userId && p.type === "request" && !blockedWith(p.userId))
     .filter((p) => p.audience !== "circle" || !p.circleId || me.circleIds.includes(p.circleId))
     .map(card)
-    .filter((c) => c.presence === "online" || c.distanceKm == null || c.distanceKm < 28)
+    .filter((c) => c.presence === "online" || c.distanceKm == null || c.distanceKm <= Math.max(c.radiusKm ?? 12, radius))
     .sort((a, b) => b.matchScore - a.matchScore);
-  const skillMatches = open.filter((c) => skillHit(self().skills, c.category)).slice(0, 6);
-  const people = db.people.filter((p) => p.userId !== me.userId).slice(0, 6).map(toPublic);
+  const skillMatches = open.filter((c) => skillHit(self().skills, c.category)).slice(0, 8);
+  const people = db.people.filter((p) => p.userId !== me.userId && !blockedWith(p.userId) && !p.admin).slice(0, 6).map(toPublic);
   const ch = await getChallenges();
+  const notes = myNotifs();
   const impact: Impact = {
     favorsCompleted: self().favorsGiven + self().favorsReceived,
     peopleHelped: self().favorsGiven,
@@ -1484,8 +1948,8 @@ export async function getHome() {
     recommended: open.slice(0, 8),
     skillMatches,
     people,
-    notifications: db.notifs.slice(0, 6),
-    unread: db.notifs.filter((n) => !n.read).length,
+    notifications: notes.slice(0, 6).map(({ userId: _u, ...rest }) => rest),
+    unread: notes.filter((n) => !n.read).length,
     challenges: ch.ok ? ch.data.challenges : [],
     impact,
     circles: db.circles.map((c) => ({
@@ -1521,7 +1985,7 @@ export async function setMyLocation(raw: DataArg<{ lat: number; lng: number; are
   const skillN = nearby.filter((c) => skillHit(me.skills, c.category)).length;
   const circleN = nearby.filter((c) => c.circleId && me.circleIds.includes(c.circleId)).length;
   const moved = prevArea !== me.area || data.source === "gps";
-  const already = db.notifs.some((n) => n.type === "nearby_match" && Date.now() - +new Date(n.createdAt) < 36e5);
+  const already = db.notifs.some((n) => n.userId === me.userId && n.type === "nearby_match" && Date.now() - +new Date(n.createdAt) < 36e5);
   if (moved && prefs.nearbyNotifs && skillN > 0 && !already) {
     notify(
       me.userId,
@@ -1531,7 +1995,7 @@ export async function setMyLocation(raw: DataArg<{ lat: number; lng: number; are
       "nearby_match",
     );
   }
-  if (moved && prefs.circleNotifs && circleN > 0 && !db.notifs.some((n) => n.type === "circle_match" && Date.now() - +new Date(n.createdAt) < 36e5)) {
+  if (moved && prefs.circleNotifs && circleN > 0 && !db.notifs.some((n) => n.userId === me.userId && n.type === "circle_match" && Date.now() - +new Date(n.createdAt) < 36e5)) {
     notify(me.userId, "Your Circle has a new request", "People you already trust asked for a hand nearby.", "/app/circles", "circle_match");
   }
   save();
@@ -1540,16 +2004,30 @@ export async function setMyLocation(raw: DataArg<{ lat: number; lng: number; are
 
 export async function getPrefs() {
   const db = load();
-  return ok(db.prefs ?? { nearbyNotifs: true, circleNotifs: true });
+  const me = self();
+  return ok({
+    nearbyNotifs: db.prefs?.nearbyNotifs ?? true,
+    circleNotifs: db.prefs?.circleNotifs ?? true,
+    availability: me.availability,
+    preferredRadius: me.preferredRadius,
+    presencePref: me.presencePref,
+  });
 }
 
-export async function updatePrefs(raw: DataArg<{ nearbyNotifs?: boolean; circleNotifs?: boolean }>) {
+export async function updatePrefs(raw: DataArg<{ nearbyNotifs?: boolean; circleNotifs?: boolean; availability?: string; preferredRadius?: number; presencePref?: string }>) {
   const data = arg(raw, {});
   const db = load();
   db.prefs = {
     nearbyNotifs: data.nearbyNotifs ?? db.prefs?.nearbyNotifs ?? true,
     circleNotifs: data.circleNotifs ?? db.prefs?.circleNotifs ?? true,
+    availability: data.availability ?? db.prefs?.availability ?? "Flexible",
+    preferredRadius: data.preferredRadius ?? db.prefs?.preferredRadius ?? 12,
+    presencePref: data.presencePref ?? db.prefs?.presencePref ?? "either",
   };
+  const me = self();
+  if (data.availability) me.availability = data.availability;
+  if (data.preferredRadius) me.preferredRadius = data.preferredRadius;
+  if (data.presencePref) me.presencePref = data.presencePref;
   save();
   return ok(db.prefs);
 }
@@ -1602,10 +2080,322 @@ export async function joinCircle(raw: DataArg<{ circleId: string; join?: boolean
   return listCircles();
 }
 
-export async function saveHelpSkills(raw: DataArg<{ skills: string[] }>) {
-  const { skills } = arg(raw, { skills: [] as string[] });
+export async function saveHelpSkills(raw: DataArg<{ skills: string[]; availability?: string; preferredRadius?: number; presencePref?: string }>) {
+  const data = arg(raw, { skills: [] as string[] });
   const me = self();
-  me.skills = skills.slice(0, 8);
+  me.skills = data.skills.slice(0, 8);
+  if (data.availability) me.availability = data.availability;
+  if (data.preferredRadius) me.preferredRadius = data.preferredRadius;
+  if (data.presencePref) me.presencePref = data.presencePref;
   save();
   return ok(toMe(me));
+}
+
+export async function adoptSession(
+  raw: DataArg<{ userId: string; name: string | null; email: string | null; photoUrl: string | null }>,
+) {
+  const data = arg(raw, { userId: "", name: null, email: null, photoUrl: null });
+  if (!data.userId) return fail("Missing account.");
+  const db = load();
+  const existing = person(data.userId);
+  if (!existing) {
+    const username =
+      (data.email?.split("@")[0] || data.name || "neighbor")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "")
+        .slice(0, 16) || "neighbor";
+    const created = enrichPerson({
+      userId: data.userId,
+      name: (data.name || "Neighbor").slice(0, 60),
+      username,
+      bio: "",
+      city: "Dubai",
+      area: "Nearby",
+      photoUrl: data.photoUrl,
+      avatarHue: 168,
+      skills: [],
+      needHelpWith: [],
+      interests: ["Neighbors"],
+      reputation: 50,
+      favorsGiven: 0,
+      favorsReceived: 0,
+      streak: 0,
+      level: 1,
+      verified: false,
+      plus: false,
+      plusStatus: "free",
+      createdAt: now(),
+      email: data.email,
+      credits: STARTER_CREDITS,
+      onboardingComplete: false,
+      lat: null,
+      lng: null,
+      circleIds: [],
+      locationSource: "default",
+      intent: "both",
+    });
+    db.people.push(created);
+    for (const c of db.circles) {
+      if ((c.id === "c_marina" || c.id === "c_friends") && !c.memberIds.includes(created.userId)) c.memberIds.push(created.userId);
+    }
+    created.circleIds = db.circles.filter((c) => c.memberIds.includes(created.userId)).map((c) => c.id);
+    notify(created.userId, `Welcome to ${APP_NAME}`, "Ask for a small hand, or help someone nearby.", "/app/discover", "welcome");
+    db.selfId = created.userId;
+    save();
+    return ok(toMe(created));
+  }
+  if (data.email && !existing.email) existing.email = data.email;
+  if (data.photoUrl && !existing.photoUrl) existing.photoUrl = data.photoUrl;
+  if (data.name && (existing.name === "Neighbor" || existing.name === "You" || existing.name === "New neighbor")) existing.name = data.name.slice(0, 60);
+  db.selfId = existing.userId;
+  save();
+  return ok(toMe(existing));
+}
+
+export async function updatePost(raw: DataArg<{ id: string; title?: string; description?: string; whenNeeded?: string; category?: string }>) {
+  const data = arg(raw, { id: "" });
+  const stopped = assertActive();
+  if (stopped) return stopped;
+  const post = load().posts.find((p) => p.id === data.id);
+  if (!post) return fail("That favor is no longer available.");
+  if (post.userId !== load().selfId) return fail("You can only edit your own request.");
+  if (!["open", "expired"].includes(post.status)) return fail("This request can no longer be edited.");
+  if (data.title && data.title.trim().length >= 4) post.title = data.title.slice(0, 140);
+  if (data.description != null) post.description = data.description.slice(0, 800);
+  if (data.whenNeeded && (WHEN_OPTS as readonly string[]).includes(data.whenNeeded)) post.whenNeeded = data.whenNeeded;
+  if (data.category) post.category = LEGACY_CATEGORY[data.category] ?? data.category;
+  if (post.status === "expired") {
+    post.status = "open";
+    post.expiredAt = null;
+    post.createdAt = now();
+  }
+  save();
+  return ok(card(post));
+}
+
+export async function expandArea(raw: DataArg<{ id: string }>) {
+  const { id } = arg(raw, { id: "" });
+  const post = load().posts.find((p) => p.id === id);
+  if (!post) return fail("That favor is no longer available.");
+  if (post.userId !== load().selfId) return fail("Only the requester can expand the area.");
+  if (!["open", "expired"].includes(post.status)) return fail("This request can no longer be expanded.");
+  post.radiusKm = Math.min(50, Math.round((post.radiusKm || 12) * 2));
+  if (post.status === "expired") {
+    post.status = "open";
+    post.expiredAt = null;
+    post.createdAt = now();
+  }
+  save();
+  return ok(card(post));
+}
+
+export async function reopenPost(raw: DataArg<{ id: string }>) {
+  const { id } = arg(raw, { id: "" });
+  const post = load().posts.find((p) => p.id === id);
+  if (!post) return fail("That favor is no longer available.");
+  if (post.userId !== load().selfId) return fail("Only the requester can reopen this.");
+  if (!["expired", "cancelled", "open"].includes(post.status)) return fail("This request cannot be tried again yet.");
+  post.status = "open";
+  post.expiredAt = null;
+  post.cancelledBy = null;
+  post.cancelledAt = null;
+  post.cancelReason = null;
+  post.helperId = null;
+  post.createdAt = now();
+  save();
+  return ok(card(post));
+}
+
+export async function reportOutcome(raw: DataArg<{ postId: string; reason: string; details?: string }>) {
+  const data = arg(raw, { postId: "", reason: "" });
+  const stopped = assertActive();
+  if (stopped) return stopped;
+  const db = load();
+  const post = db.posts.find((p) => p.id === data.postId);
+  if (!post) return fail("That favor is no longer available.");
+  if (post.userId !== db.selfId && post.helperId !== db.selfId) return fail("Only people on this favor can report what happened.");
+  if (!["accepted", "in_progress", "pending_confirm", "disputed"].includes(post.status)) {
+    return fail("You can only report a problem on an active favor.");
+  }
+  const against = db.selfId === post.userId ? post.helperId : post.userId;
+  db.disputes.unshift({
+    id: nid("ds"),
+    postId: post.id,
+    reporterId: db.selfId,
+    againstUserId: against,
+    reason: data.reason.slice(0, 80),
+    details: (data.details ?? "").slice(0, 500),
+    status: "open",
+    createdAt: now(),
+    resolution: null,
+  });
+  post.status = "disputed";
+  post.disputeStatus = "open";
+  if (against) {
+    notify(against, "A favor needs review", `${self().name} reported a problem with “${post.title}”. Trust is not changed until a moderator looks.`, `/app/favor/${post.id}`, "dispute");
+  }
+  const admin = db.people.find((p) => p.admin);
+  if (admin) notify(admin.userId, "New dispute", `${self().name}: ${data.reason} · ${post.title}`, "/app/admin", "dispute");
+  save();
+  return ok(true);
+}
+
+export async function listPersonas() {
+  const db = load();
+  const roles: Record<string, string> = {
+    demo_a: "Requester",
+    demo_b: "Helper",
+    demo_admin: "Moderator",
+    demo_new: "New neighbor",
+  };
+  const ids = new Set(["demo_a", "demo_b", "demo_admin", "demo_new", db.selfId]);
+  const rows: PersonaRow[] = db.people
+    .filter((p) => ids.has(p.userId))
+    .map((p) => ({
+      userId: p.userId,
+      name: p.name,
+      role: roles[p.userId] ?? "You",
+      active: p.userId === db.selfId,
+      admin: Boolean(p.admin),
+    }));
+  return ok(rows);
+}
+
+export async function switchUser(raw: DataArg<{ userId: string }>) {
+  const { userId } = arg(raw, { userId: "" });
+  const db = load();
+  const p = person(userId);
+  if (!p) return fail("That person isn’t in this neighborhood.");
+  db.selfId = userId;
+  save();
+  return ok(toMe(p));
+}
+
+function requireAdmin(): { ok: false; error: string } | null {
+  if (!self().admin) return { ok: false, error: "Admin tools are only for moderators." };
+  return null;
+}
+
+export async function getAdmin() {
+  const gate = requireAdmin();
+  if (gate) return gate;
+  const db = load();
+  const reports: ReportRow[] = db.reports.map((r) => ({
+    id: r.id,
+    reporterId: r.reporterId,
+    reporterName: person(r.reporterId)?.name ?? "Neighbor",
+    reportedUserId: r.reportedUserId,
+    reportedName: r.reportedUserId ? person(r.reportedUserId)?.name ?? null : null,
+    postId: r.postId,
+    postTitle: r.postId ? (db.posts.find((p) => p.id === r.postId)?.title ?? null) : null,
+    reason: r.reason,
+    details: r.details,
+    status: r.status,
+    createdAt: r.createdAt,
+    resolution: r.resolution,
+  }));
+  const disputes: DisputeRow[] = db.disputes.map((d) => ({
+    id: d.id,
+    postId: d.postId,
+    postTitle: db.posts.find((p) => p.id === d.postId)?.title ?? "Favor",
+    reporterId: d.reporterId,
+    reporterName: person(d.reporterId)?.name ?? "Neighbor",
+    againstUserId: d.againstUserId,
+    reason: d.reason,
+    details: d.details,
+    status: d.status,
+    createdAt: d.createdAt,
+    resolution: d.resolution,
+  }));
+  return ok({
+    users: db.people.filter((p) => !p.admin).map((p) => ({
+      ...toPublic(p),
+      suspended: p.suspended,
+      warned: p.warned,
+    })),
+    activeFavors: db.posts.filter((p) => ["open", "accepted", "in_progress", "pending_confirm", "disputed"].includes(p.status)).map(card),
+    completedFavors: db.posts.filter((p) => p.status === "completed").slice(0, 40).map(card),
+    reports,
+    disputes,
+    blocks: db.blocks.map((b) => ({
+      blocker: person(b.blockerId)?.name ?? b.blockerId,
+      blocked: person(b.blockedId)?.name ?? b.blockedId,
+    })),
+    suspended: db.people.filter((p) => p.suspended).map(toPublic),
+    reviews: db.reviews.slice(0, 40),
+  });
+}
+
+export async function adminAction(
+  raw: DataArg<{
+    action: string;
+    reportId?: string;
+    disputeId?: string;
+    userId?: string;
+    postId?: string;
+    resolution?: string;
+  }>,
+) {
+  const gate = requireAdmin();
+  if (gate) return gate;
+  const data = arg(raw, { action: "" });
+  const db = load();
+  const action = data.action;
+  if (action === "review_report") {
+    const r = db.reports.find((x) => x.id === data.reportId);
+    if (!r) return fail("Report not found.");
+    r.status = "reviewed";
+    r.resolution = data.resolution || "Reviewed";
+    notify(r.reporterId, "Report update", "A moderator reviewed your report.", "/app/safety", "report");
+  } else if (action === "warn_user") {
+    const p = person(data.userId ?? "");
+    if (!p) return fail("User not found.");
+    p.warned = true;
+    notify(p.userId, "A moderator sent a warning", data.resolution || "Please follow Onegai’s safety guidelines.", "/app/safety", "warn");
+  } else if (action === "suspend_user") {
+    const p = person(data.userId ?? "");
+    if (!p) return fail("User not found.");
+    p.suspended = true;
+    notify(p.userId, "Account suspended", "A moderator paused this account. Contact Onegai if this is a mistake.", "/app/safety", "suspend");
+  } else if (action === "restore_user") {
+    const p = person(data.userId ?? "");
+    if (!p) return fail("User not found.");
+    p.suspended = false;
+    p.warned = false;
+    notify(p.userId, "Account restored", "A moderator restored your account.", "/app", "restore");
+  } else if (action === "remove_post") {
+    const post = db.posts.find((p) => p.id === data.postId);
+    if (!post) return fail("Favor not found.");
+    post.status = "cancelled";
+    post.cancelReason = "Removed by moderator";
+    post.cancelledBy = db.selfId;
+    post.cancelledAt = now();
+    notify(post.userId, "A request was removed", `“${post.title}” was taken down.`, "/app", "removed");
+  } else if (action === "resolve_dispute") {
+    const d = db.disputes.find((x) => x.id === data.disputeId);
+    if (!d) return fail("Dispute not found.");
+    const post = db.posts.find((p) => p.id === d.postId);
+    const how = data.resolution || "no_fault";
+    d.status = "resolved";
+    d.resolution = how;
+    if (post) {
+      post.disputeStatus = "resolved";
+      if (how === "completed_anyway") post.status = "completed";
+      else post.status = "cancelled";
+      if (how === "helper_fault" && post.helperId) {
+        const h = person(post.helperId);
+        if (h) h.unreliableCancels += 1;
+      }
+      if (how === "requester_fault") {
+        const r = person(post.userId);
+        if (r) r.unreliableCancels += 1;
+      }
+      notify(post.userId, "Dispute resolved", "A moderator reviewed what happened. Trust only changes after a fair review.", `/app/favor/${post.id}`, "dispute");
+      if (post.helperId) notify(post.helperId, "Dispute resolved", "A moderator reviewed what happened.", `/app/favor/${post.id}`, "dispute");
+    }
+  } else {
+    return fail("Unknown admin action.");
+  }
+  save();
+  return getAdmin();
 }
